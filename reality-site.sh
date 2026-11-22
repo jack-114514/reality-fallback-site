@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 umask 022
 
-readonly VERSION=1.2.1
+readonly VERSION=1.3
 readonly CADDY_VERSION=2.11.9
 readonly CONFIG_DIR=/etc/reality-site
 readonly WEB_ROOT=/var/www/reality-site
@@ -158,6 +158,109 @@ readonly -a SITE_BODY_FONTS=(
   '"Kaiti SC",KaiTi,"STKaiti",Georgia,serif'
 )
 
+readonly -a SITE_OFFICIAL_LINKS=(
+  '苹果|https://www.apple.com.cn/|消费电子'
+  '微软|https://www.microsoft.com/zh-cn/|软件与服务'
+  '英特尔|https://www.intel.cn/content/www/cn/zh/homepage.html|半导体'
+  '百度|https://www.baidu.com/|搜索与技术'
+  '索尼|https://www.sony.com.cn/|消费电子'
+  '三星|https://www.samsung.com.cn/|消费电子'
+  '联想|https://www.lenovo.com.cn/|电脑与设备'
+  '戴尔|https://www.dell.com/zh-cn|电脑与设备'
+  '惠普|https://www.hp.com/cn-zh/home.html|电脑与设备'
+  '华硕|https://www.asus.com.cn/|电脑与设备'
+  '宏碁|https://www.acer.com.cn/|电脑与设备'
+  '技嘉|https://www.gigabyte.cn/|电脑与设备'
+  '罗技|https://www.logitech.com/zh-cn|电脑外设'
+  '佳能|https://www.canon.com.cn/|影像与办公'
+  '理光|https://www.ricoh.com.cn/|影像与办公'
+  '兄弟|https://www.brother.cn/|打印与办公'
+  '飞利浦|https://www.philips.com.cn/|消费电子'
+  '松下|https://panasonic.cn/|消费电子'
+  '夏普|https://www.sharp.cn/|消费电子'
+  '英伟达|https://www.nvidia.cn/|半导体'
+  '高通|https://www.qualcomm.cn/|半导体'
+  'Arm|https://www.arm.com/zh-cn|芯片架构'
+  '德州仪器|https://www.ti.com.cn/|半导体'
+  '恩智浦|https://www.nxp.com.cn/|半导体'
+  '亚德诺|https://www.analog.com/cn/index.html|半导体'
+  '美光|https://www.micron.cn/|内存与存储'
+  '希捷|https://www.seagate.com/cn/zh/|存储设备'
+  '西部数据|https://www.westerndigital.com/zh-cn|存储设备'
+  '东芝|https://www.toshiba.com.cn/|电子与工业'
+  '日立|https://www.hitachi.com.cn/|工业技术'
+  '欧姆龙|https://www.omron.com.cn/|自动化与健康'
+  '基恩士|https://www.keyence.com.cn/|工业自动化'
+  '安川电机|https://www.yaskawa.com.cn/|工业自动化'
+  '施耐德电气|https://www.se.com/cn/zh/|能源与自动化'
+  'ABB|https://new.abb.com/cn|工业电气'
+  '博世|https://www.bosch.com.cn/|工业与消费技术'
+  '霍尼韦尔|https://www.honeywell.com.cn/|工业技术'
+  '奥的斯|https://www.otis.com/zh/cn|电梯与楼宇'
+  '小松|https://www.komatsu.com.cn/|工程设备'
+  '约翰迪尔|https://www.deere.com.cn/zh/index.html|农业设备'
+  '康明斯|https://www.cummins.com.cn/|动力技术'
+  'IBM|https://www.ibm.com/cn-zh|企业技术'
+  '甲骨文|https://www.oracle.com/cn/|企业软件'
+  'Adobe|https://www.adobe.com/cn/|创意软件'
+  '欧特克|https://www.autodesk.com.cn/|设计软件'
+  '美国国家仪器|https://www.ni.com/zh-cn.html|测试测量'
+  '亚马逊云科技|https://www.amazonaws.cn/|云计算'
+  '华为|https://www.huawei.com/cn/|通信与技术'
+  '小米|https://www.mi.com/|消费电子'
+  '荣耀|https://www.honor.com/cn/|消费电子'
+  'OPPO|https://www.oppo.com/cn/|消费电子'
+  'vivo|https://www.vivo.com.cn/|消费电子'
+  '大疆|https://www.dji.com/cn|影像设备'
+  'TP-Link|https://www.tp-link.com.cn/|网络设备'
+  '海尔|https://www.haier.com/|家电'
+  '海信|https://www.hisense.com/|家电'
+  '丰田|https://www.toyota.com.cn/|汽车'
+  '本田|https://www.honda.com.cn/|汽车'
+  '日产|https://www.nissan.com.cn/|汽车'
+  '梅赛德斯-奔驰|https://www.mercedes-benz.com.cn/|汽车'
+  '大众汽车|https://www.vw.com.cn/|汽车'
+  '保时捷|https://www.porsche.cn/china/zh/|汽车'
+  '特斯拉|https://www.tesla.cn/|汽车'
+  '福特|https://www.ford.com.cn/|汽车'
+  '斯巴鲁|https://www.subaru-china.cn/|汽车'
+  '凯迪拉克|https://www.cadillac.com.cn/|汽车'
+  '比亚迪|https://www.byd.com/cn|汽车'
+  '米其林|https://www.michelin.com.cn/|轮胎与出行'
+  '普利司通|https://www.bridgestone.com.cn/|轮胎与出行'
+  '固特异|https://www.goodyear.com.cn/|轮胎与出行'
+  '壳牌|https://www.shell.com.cn/|能源'
+  '巴斯夫|https://www.basf.com/cn/zh|化工与材料'
+  '陶氏|https://cn.dow.com/zh-cn|化工与材料'
+  '汉高|https://www.henkel.cn/|材料与消费品'
+  '圣戈班|https://www.saint-gobain.com.cn/|建筑材料'
+  '罗氏|https://www.roche.com.cn/|生命科学'
+  '赛默飞|https://www.thermofisher.cn/cn/zh/home.html|实验室设备'
+  '赛多利斯|https://www.sartorius.com.cn/|实验室设备'
+  '宜家|https://www.ikea.cn/cn/zh/|家居'
+  '无印良品|https://www.muji.com.cn/|生活用品'
+  '优衣库|https://www.uniqlo.cn/|服装'
+  '耐克|https://www.nike.com.cn/|运动用品'
+  '阿迪达斯|https://www.adidas.com.cn/|运动用品'
+  '亚瑟士|https://www.asics.com.cn/|运动用品'
+  '新百伦|https://www.newbalance.com.cn/|运动用品'
+  '宝洁|https://www.pg.com.cn/|消费品'
+  '达能|https://www.danone.com.cn/|食品与饮料'
+  '可口可乐|https://www.coca-cola.com/cn/zh|食品与饮料'
+  '百事|https://www.pepsico.com.cn/|食品与饮料'
+  '星巴克|https://www.starbucks.com.cn/|餐饮'
+  '麦当劳|https://www.mcdonalds.com.cn/|餐饮'
+  '资生堂|https://www.shiseido.com.cn/|消费品'
+  '强生|https://www.jnj.com.cn/|健康与消费品'
+  '联邦快递|https://www.fedex.com/zh-cn/home.html|国际物流'
+  'UPS|https://www.ups.com/cn/zh/home|国际物流'
+  'DHL|https://www.dhl.com/cn-zh/home.html|国际物流'
+  '波音|https://www.boeing.cn/|航空制造'
+  '汇丰中国|https://www.hsbc.com.cn/|金融服务'
+  '渣打中国|https://www.sc.com/cn/|金融服务'
+  'Visa|https://www.visa.cn/|支付服务'
+)
+
 shade_color() {
   local hex=$1 endpoint=$2 amount=$3
   printf '#%02x%02x%02x' \
@@ -235,22 +338,38 @@ render_blog() {
     '阅读|重读时改一个问题|隔一阵子，再读一遍曾经划过线的文章，看看当时的问题现在还有没有用。被觉得新鲜的句子可能很快懂，被跳过的一段却值得多停一下。|把新的问题写在原来那个下面。两次读书之间经历了什么，有时从这两个问题就能看出来。'
     '城市|雨后去桥上看一眼|雨停后桥面还湿着，两边的灯在水面上留下长线。走到离护栏一臂远的地方，能听见车轮擦过浅水。|天气转晴之前适合在桥上站一会儿。河对岸的窗户，一盏一盏地亮起来。'
     '手作|用一根线收好散页|零散的几页纸对齐，先找一张稍厚的封面折出书脊。打两个小孔，用粗一点的线穿过去。|只装最近还想翻看的几页，别的留在原处。薄薄的一册反倒容易常拿在手边。'
+    '居家|日光移到窗台哪一格|上午的光先照到最里面那盆。把两盆植物对调后观察几天，叶子朝哪边伸比日历更直观。|不用一天挪好几次，等光线和叶子都安静下来，再决定这个位置。'
+    '城市|最后一班有轨电车|晚一点坐车，车厢里没有上下班时的人声。车沿着街道慢慢转弯，能看清每一条并行的小路。|下车时记住掉头的地方，改天沿轨道旁的人行道走过去看看。'
+    '厨房|练习把葱切得一样细|葱洗好后先沥干，分成两段叠在一起，再从靠手的一端往前切。厚薄整齐更容易估计最后放多少。|剩下一半切大段冻好，周末炒饭时用，不必再洗一整把。'
+    '阅读|把一首诗抄在纸背|报纸边上的诗只读了一遍，留下的却是末尾那个动作。试着抄下来，抄到一半才看清中间有两次停顿。|抄完折起纸留在书里，再读到相似的句子时取出来对照看看。'
+    '摄影|一次只拍一种形状|散步时专找拱门。第一眼容易看到公园门口的大拱，转过街角才发现窗台和自行车架上也有相似的弧线。|拍完回来看，选出差别最大的三张。剩下的图下次再挑。'
+    '散步|在河的上游掉头|沿河走上半小时，房子渐渐少下去，岸边只剩一条碎石路。往回走时注意另一侧的水草，更容易分辨哪里水流慢。|走累了在树下站一会儿，等呼吸平稳了再接着走。'
+    '手作|给松散的插头贴一个标签|几根线放进抽屉后，长得越来越像。把用途写在纸条上，贴在接头附近，取用时就能先看到。|旧标签脏了可以剪掉换一张，比拆开每根线重新试一遍省事。'
+    '日常|周日只安排一个大件|周日很容易顺手列十件事，做事前先挑一件最需要完整时间的。其余放在一旁，等那件结束再挑能顺便做的。|到了傍晚还能有空走去买水果，这天就没有被切得太碎。'
+    '居家|把菜谱放在常看的地方|做饭时手机总会在切菜前锁屏。把常做的一道菜写成六行，贴在不见油烟的柜门内侧。|上面留点空位，下次发现更省时的顺序就直接改在上面。'
+    '城市|回家前经过花摊|收摊的人会按花梗长短重新捆一遍。街灯照下来，桶里的水把叶子映成了两层。|买之前先想花瓶的高度，挑几枝回去，剪一截浸在水里。'
+    '摄影|用薄纸挡一下直光|桌上玻璃杯太亮时，在窗边挡一张薄纸试试。杯口的反光变宽之后，水里的影子更容易拍清楚。|拍照前也可以先把杯子移离窗台，比较两种得到的阴影。'
+    '阅读|把正文前的目录读完|目录常常比书封更能说明作者想回答什么。先按标题猜一下章节关系，再从最有兴趣的地方打开。|读了几页如果不明白术语，再回到前一章找它第一次出现的位置。'
+    '散步|去树影短一些的街|午后的树影向人行道伸出来，脚步走到光和影交界时会不自觉地慢下来。避开大路，找几处可以安静站着的地方。|以后天气热起来，走同一条线时知道在哪儿能歇脚。'
+    '厨房|煎剩下一小块豆腐|豆腐压去表面水分，切片放进锅里，等一面成形才翻。把盘底的两勺汤留到最后加进去。|煎好夹在馒头里，午饭就可以只再切一只番茄。'
+    '日常|一周记三样见闻|想写日记但时间不够，可以只挑一种声音、一件借过的物品和一个想再去的地方记下来。|隔几周翻看，会发现几条记录说的是同一件事，再把它们合成一篇短文。'
   )
   local -a selected=()
-  local -a titles=()
-  local i category title
+  local i position count category title menu_items=''
 
   digest=$(printf '%s' "$1" | sha256sum)
   IFS='|' read -r name intro about <<< "${identities[16#${digest:0:2} % ${#identities[@]}]}"
   theme=$(site_theme "$digest")
   layout=${layouts[16#${digest:6:2} % ${#layouts[@]}]}
-  for i in 8 10 12; do
+  count=$((3 + 16#${digest:52:2} % 3))
+  for ((position=1; position<=count; position++)); do
+    i=$((6 + position * 2))
     choice=$((16#${digest:i:2} % ${#articles[@]}))
     record=${articles[choice]}
     selected+=("$record")
     articles=("${articles[@]:0:choice}" "${articles[@]:choice+1}")
     IFS='|' read -r category title _ <<< "$record"
-    titles+=("$title")
+    menu_items+="<li><a href=\"#entry-$position\">$title</a></li>"
   done
 
   cat <<EOF
@@ -312,23 +431,23 @@ footer { border-top:1px solid var(--rule); padding-block:1rem 1.5rem; text-align
 <main class="wrap main" id="main">
 EOF
   local hero="<section class=\"hero\"><h1>$name</h1><p>$intro</p></section>"
-  local menu="<nav class=\"menu\" aria-label=\"文章目录\"><h2>最近文章</h2><ul><li><a href=\"#entry-1\">${titles[0]}</a></li><li><a href=\"#entry-2\">${titles[1]}</a></li><li><a href=\"#entry-3\">${titles[2]}</a></li></ul></nav>"
+  local menu="<nav class=\"menu\" aria-label=\"文章目录\"><h2>最近文章</h2><ul>$menu_items</ul></nav>"
   case "$layout" in
     archive)
       printf '<aside>%s%s</aside>\n<section id="notes" aria-label="文章">\n' "$hero" "$menu"
-      for i in 0 1 2; do blog_article "$((i + 1))" "${selected[i]}"; done
+      for i in "${!selected[@]}"; do blog_article "$((i + 1))" "${selected[i]}"; done
       printf '</section>\n'
       ;;
     feature)
       printf '%s\n<section id="notes" aria-label="文章"><div class="lead">\n' "$hero"
       blog_article 1 "${selected[0]}"
       printf '</div>\n%s\n<div class="grid">\n' "$menu"
-      for i in 1 2; do blog_article "$((i + 1))" "${selected[i]}"; done
+      for ((i=1; i<${#selected[@]}; i++)); do blog_article "$((i + 1))" "${selected[i]}"; done
       printf '</div></section>\n'
       ;;
     journal)
       printf '%s\n%s\n<section id="notes" aria-label="文章">\n' "$hero" "$menu"
-      for i in 0 1 2; do blog_article "$((i + 1))" "${selected[i]}"; done
+      for i in "${!selected[@]}"; do blog_article "$((i + 1))" "${selected[i]}"; done
       printf '</section>\n'
       ;;
   esac
@@ -344,42 +463,63 @@ EOF
 tool_card() {
   local tool=$1 title label field submit
   case "$tool" in
+    archive)
+      printf '%s\n' '<article class="card"><h2>7-Zip 安装包</h2><p>在官方页面选择适合你的操作系统和处理器架构的安装包。</p><p class="link-actions"><a href="https://www.7-zip.org/download.html" rel="noreferrer">获取官方安装包</a></p></article>'
+      return
+      ;;
     count) title='文字计数'; label='输入文字'; submit='统计'; field='<textarea name="value" rows="3" required></textarea>';;
     temperature) title='摄氏度转华氏度'; label='温度（°C）'; submit='换算'; field='<input name="value" type="number" step="any" required>';;
     length) title='厘米转英寸'; label='长度（cm）'; submit='换算'; field='<input name="value" type="number" min="0" step="any" required>';;
     format) title='JSON 整理'; label='输入 JSON'; submit='格式化'; field='<textarea name="value" rows="3" required spellcheck="false"></textarea>';;
     uppercase) title='转大写'; label='输入文字'; submit='转换'; field='<textarea name="value" rows="3" required></textarea>';;
+    pdf) title='PDF 提取文字'; label='选择 PDF 文件'; submit='提取文字'; field='<input name="value" type="file" accept=".pdf,application/pdf" required><span class="hint">支持带文字层的 PDF。文件在浏览器中处理。</span>';;
+    download) title='一键下载文本'; label='输入要保存的文字'; submit='下载 TXT'; field='<textarea name="value" rows="3" required></textarea>';;
+    timestamp) title='时间戳转换'; label='输入 Unix 时间戳（秒）'; submit='转换时间'; field='<input name="value" type="number" step="1" required>';;
+    urlcode) title='URL 编码'; label='输入要编码的文字'; submit='编码'; field='<textarea name="value" rows="3" required></textarea>';;
   esac
   printf '<form class="card" data-tool="%s"><h2>%s</h2><label>%s%s</label><button type="submit">%s</button><output aria-live="polite"></output></form>\n' \
     "$tool" "$title" "$label" "$field" "$submit"
 }
 
+site_storage() {
+  local path=$WEB_ROOT result
+  while [[ ! -d $path && $path != / ]]; do
+    path=${path%/*}
+    path=${path:-/}
+  done
+  if result=$(LC_ALL=C df -Pk -- "$path" 2>/dev/null | awk 'NR == 2 && $2 ~ /^[0-9]+$/ { printf "%.1f GiB", $2 / 1048576 }') && [[ -n $result ]]; then
+    printf '%s' "$result"
+  else
+    printf '暂不可用'
+  fi
+}
+
 render_other_site() {
-  local digest=$1 type=$2 name intro nav_label theme choice i detail title url
-  local -a names=() cards=() tools=(count temperature length format uppercase)
+  local digest=$1 type=$2 name intro nav_label theme choice i detail title url count position storage draw extra has_pdf=0
+  local -a names=() cards=() tools=(count temperature length format uppercase pdf archive download timestamp urlcode)
   case "$type" in
     home)
       names=('我的第一个网站' '小站第一天' '一页个人主页' '从一张空白页开始' '搭个小站' '书签里的主页')
-      intro='把最近在做的几件事放在一起，过一段时间回来看看。'
-      nav_label='最近在做'
+      intro='把学习 Python 的路线写成一份能照着做的练习计划。'
+      nav_label='Python 学习计划'
       cards=(
-        '整理读书摘录|每周挑一个问题，写下读到的两种回答，留作下一次阅读的起点。'
-        '画一张街区地图|从常走的小路开始，用几种颜色区分树荫、便利店和能坐一会儿的地方。'
-        '做一个静态主页|先写清要展示的内容，再练习用标题、列表和段落把信息整理出来。'
-        '归档照片|把同一次出门的照片放进一个文件夹，每一组只保留最能说明那一天的几张。'
-        '攒一份食谱|把常做的三道菜写清用量和顺序，下次做的时候补上时间。'
+        '七天写出一个终端记账本|第 1、2 天练习变量、输入和数字转换。第 3、4 天用条件语句和循环处理菜单。第 5 天把记录放进列表、拆成函数。第 6 天写入 CSV。第 7 天用五笔样例核对收支总额。'
+        '两周做一个阅读清单|第一周学习字符串、字典、列表和文件读写，把书名和页码存成 JSON。第二周加上命令行的添加、搜索和完成操作。验收时关掉程序再打开，记录仍能读出来。'
+        '十天练习处理表格数据|先用三天学习 csv 模块和异常处理，再用四天练习筛选、排序和按类别汇总。最后三天把练习合成一个脚本，用包含空值和重复行的数据检查输出。'
+        '用三个周末写一个 Python 小站|第一个周末把基本函数和虚拟环境跑通。第二个周末用 Flask 写首页和表单。第三个周末把提交内容存进 SQLite，并补两个测试。完成后写清从零启动项目的命令。'
+        '一个月从基础到自动整理文件|第一周掌握路径和文件列表，第二周学习条件、循环和函数，第三周练习异常处理和日志，第四周实现文件分类工具。默认先预览移动计划，用临时目录测试通过后再操作真实文件。'
       )
       ;;
     learner)
       names=('小白的第一次尝试' '网页练习册' '第一次写页面' '学一点前端' '动手练习记录' '新手实验簿')
-      intro='边做边记，留下一些以后可以照着重做的练习。'
-      nav_label='练习记录'
+      intro='把第一次建站时真正用到的步骤和踩过的坑记下来。'
+      nav_label='第一次建站'
       cards=(
-        '从语义标签开始|用 main 放正文，用 nav 放导航。只有在信息关系明确之后，再决定每一块长什么样。'
-        '把长段落拆开|一个段落只讲一个主题。给每一段起个小标题，试着只看标题也能读懂顺序。'
-        '照顾小屏幕|把浏览器调到手机宽度，确认手指能点到链接，字不会挤在两侧，也没有横向滚动。'
-        '给按钮留出反馈|提交后让页面在按钮旁显示结果。键盘也要能按到按钮，并看清焦点在哪里。'
-        '上线后再检查一次|从另一个浏览器打开页面，试一次目录跳转，看看图片、字号和按钮是否还正常。'
+        '第一次发布，先做一张能打开的首页|最初想一次做出导航、图库和留言板，结果一项都没收尾。我后来只留下标题、介绍和两个站内链接。先在本机用浏览器打开，再上传 index.html。能从手机访问之后，才继续添加下一页。'
+        '域名配置完成，别急着改服务器|新记录保存后，浏览器还访问到旧地址。我先查解析值是否已更新，再核对网站的域名配置。把解析、站点监听和 HTTPS 分成三步，排查比反复重启服务快。'
+        '本地正常，手机却横向滚动|桌面上图片刚好装得下，手机端却把整个页面撑宽了。我给图片加了最大宽度，让文字自然换行，再用窄屏和放大字体各试一次。这个问题只有实际打开小屏幕才容易看到。'
+        '第一次部署后才发现相对路径的重要性|首页能打开，样式和图片却空了。原来本地文件路径写成了电脑目录。换成站点里的相对路径，并按服务器上的大小写重新命名。部署完成后，我逐个打开了导航和图片链接。'
+        '上线前给旧首页留一份副本|第一次换页面时，直接覆盖让回退变得费劲。现在我会先留一份旧的 index.html，再发布并从另一台设备打开。遇到问题可以先换回旧页，之后再慢慢定位新版本的错误。'
       )
       ;;
     tools)
@@ -391,18 +531,12 @@ render_other_site() {
       names=('官网导航工具箱' '常用官网书签' '网页路标' '桌面导航卡' '官网入口集' '常用网站收藏')
       intro='常用的官方网站，打开就能找到产品、支持和搜索入口。'
       nav_label='官网目录'
-      cards=(
-        '苹果|https://www.apple.com/|iPhone、Mac 和 Apple 服务。'
-        '微软|https://www.microsoft.com/|Windows、Microsoft 365 和支持。'
-        '英特尔|https://www.intel.com/|处理器、驱动程序和技术资料。'
-        '百度|https://www.baidu.com/|网页搜索和站点查找。'
-      )
+      cards=("${SITE_OFFICIAL_LINKS[@]}")
       ;;
     check)
       names=('测试服务器' '站点测试台' '页面部署实验' '单页站自检' '网页实验室' '浏览器小测试')
-      intro='用这页检查网页能否打开、站内链接能否跳转，以及本页的响应状态。'
-      nav_label='页面测试'
-      cards=('标题与换行|窄屏下标题会按可用宽度换行。' '键盘焦点|按 Tab 时可看到当前链接或按钮的焦点。' '页内跳转|页面上方的入口可以跳到对应区块。' '文字可读性|在不同屏幕宽度下检查行距、字号和颜色对比。')
+      intro='站点所在文件系统的总容量与浏览器请求本页的延时。'
+      nav_label='服务器测试'
       ;;
   esac
   name=${names[16#${digest:0:2} % ${#names[@]}]}
@@ -449,50 +583,112 @@ textarea,input { width:100%; color:var(--ink); background:var(--paper); border:1
 textarea { resize:vertical; }
 button { display:block; margin-inline-start:var(--action-start); margin-inline-end:var(--action-end); cursor:pointer; color:var(--paper); background:var(--accent); border:1px solid var(--accent); padding:.35rem .8rem; border-radius:var(--radius); }
 output { display:block; margin-top:.55rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+.hint { display:block; color:var(--muted); font-size:.9em; margin-bottom:.65rem; }
+.metrics { margin:0; }
+.metrics dd { margin:0; font:var(--heading-weight) clamp(1.75rem,5vw,2.8rem)/1.25 var(--heading); }
+.metrics dt { color:var(--muted); margin-bottom:.6rem; }
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 </style>
 </head>
 <body id="top" class="$type">
+EOF
+  if [[ $type == check ]]; then
+    storage=$(site_storage)
+    cat <<EOF
+<main class="wrap">
+<section class="intro"><h1>$name</h1></section>
+<dl class="grid metrics"><div class="card"><dt>站点磁盘总容量</dt><dd>$storage</dd></div><div class="card"><dt>本页请求延时</dt><dd id="latency" aria-live="polite">测量中…</dd></div></dl>
+</main>
+EOF
+    cat <<'HTML'
+<script>
+(async () => {
+  const value = document.querySelector('#latency');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  const start = performance.now();
+  try {
+    const response = await fetch(location.href, {
+      method:'HEAD', cache:'no-store', mode:'same-origin', redirect:'error', signal:controller.signal,
+    });
+    value.textContent = response.ok ? `${Math.round(performance.now() - start)} ms` : '暂不可用';
+  } catch {
+    value.textContent = '暂不可用';
+  } finally {
+    clearTimeout(timeout);
+  }
+})();
+</script>
+</body></html>
+HTML
+    return
+  fi
+  cat <<EOF
 <header class="wrap"><a href="#top">$name</a><a href="#content">$nav_label</a></header>
 <main class="wrap">
 <section class="intro"><h1>$name</h1><p>$intro</p></section>
 <section id="content" aria-label="$nav_label">
 EOF
-  if [[ $type == check ]]; then
-    cat <<'HTML'
-<div class="card"><h2>检查本页的 HTTP 响应</h2><button type="button" id="check-response">检查响应</button><output id="check-result" aria-live="polite"></output></div>
-HTML
-  fi
   printf '<div class="grid">\n'
   if [[ $type == tools ]]; then
-    for i in 8 10 12; do
+    count=$((4 + 16#${digest:52:2} % 3))
+    for ((position=1; position<=count; position++)); do
+      i=$((6 + position * 2))
       choice=$((16#${digest:i:2} % ${#tools[@]}))
+      if [[ ${tools[choice]} == pdf ]]; then has_pdf=1; fi
       tool_card "${tools[choice]}"
       tools=("${tools[@]:0:choice}" "${tools[@]:choice+1}")
     done
   elif [[ $type == links ]]; then
-    for i in 8 10 12 16; do
-      choice=$((16#${digest:i:2} % ${#cards[@]}))
+    draw=$(printf '%s:links:0' "$digest" | sha256sum)
+    extra=$(printf '%s:links:1' "$digest" | sha256sum)
+    draw="${draw%% *}${extra%% *}"
+    for ((position=0; position<30; position++)); do
+      i=$((position * 4))
+      choice=$((16#${draw:i:4} % ${#cards[@]}))
       IFS='|' read -r title url detail <<< "${cards[choice]}"
       printf '<article class="card"><h2>%s</h2><p>%s</p><p class="link-actions"><a href="%s" rel="noreferrer">打开%s官网</a></p></article>\n' \
         "$title" "$detail" "$url" "$title"
       cards=("${cards[@]:0:choice}" "${cards[@]:choice+1}")
     done
   else
-    for i in 8 10 12; do
-      choice=$((16#${digest:i:2} % ${#cards[@]}))
-      IFS='|' read -r title detail <<< "${cards[choice]}"
-      printf '<article class="card"><h2>%s</h2><p>%s</p></article>\n' "$title" "$detail"
-      cards=("${cards[@]:0:choice}" "${cards[@]:choice+1}")
-    done
+    choice=$((16#${digest:8:2} % ${#cards[@]}))
+    IFS='|' read -r title detail <<< "${cards[choice]}"
+    printf '<article class="card"><h2>%s</h2><p>%s</p></article>\n' "$title" "$detail"
   fi
   printf '</div></section></main>\n<footer class="wrap"><a href="#top">返回顶部</a></footer>\n'
   case "$type" in
     tools)
+      printf '<script>\n'
+      if (( has_pdf )); then
+        cat <<'HTML'
+async function extractPdfText(file) {
+  const base = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.5.438/';
+  const pdfjs = await import(`${base}build/pdf.min.mjs`);
+  pdfjs.GlobalWorkerOptions.workerSrc = `${base}build/pdf.worker.min.mjs`;
+  const task = pdfjs.getDocument({
+    data:new Uint8Array(await file.arrayBuffer()), isEvalSupported:false,
+    cMapUrl:`${base}cmaps/`, cMapPacked:true, standardFontDataUrl:`${base}standard_fonts/`, wasmUrl:`${base}wasm/`,
+  });
+  try {
+    const pdf = await task.promise;
+    const pages = [];
+    for (let number = 1; number <= pdf.numPages; number += 1) {
+      const page = await pdf.getPage(number);
+      const content = await page.getTextContent();
+      pages.push(content.items.map((item) => ('str' in item) ? item.str + (item.hasEOL ? '\n' : ' ') : '').join('').trim());
+      page.cleanup();
+    }
+    return pages.join('\n\n').trim();
+  } finally {
+    await task.destroy();
+  }
+}
+HTML
+      fi
       cat <<'HTML'
-<script>
 for (const form of document.querySelectorAll('[data-tool]')) {
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const text = new FormData(form).get('value');
     const output = form.querySelector('output');
@@ -501,6 +697,31 @@ for (const form of document.querySelectorAll('[data-tool]')) {
       case 'temperature': output.textContent = `${(Number(text) * 9 / 5 + 32).toFixed(2)} °F`; break;
       case 'length': output.textContent = `${(Number(text) / 2.54).toFixed(3)} in`; break;
       case 'uppercase': output.textContent = text.toUpperCase(); break;
+      case 'urlcode': output.textContent = encodeURIComponent(text); break;
+      case 'timestamp': {
+        const date = new Date(Number(text) * 1000);
+        output.textContent = Number.isFinite(date.getTime()) ? date.toISOString() : '时间戳超出可转换范围。';
+        break;
+      }
+      case 'download': {
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(new Blob([text], {type:'text/plain;charset=utf-8'}));
+        link.href = url;
+        link.download = 'notes.txt';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        output.textContent = '已交给浏览器下载 notes.txt。';
+        break;
+      }
+      case 'pdf': {
+        const button = form.querySelector('button');
+        button.disabled = true;
+        output.textContent = '正在读取 PDF…';
+        try { output.textContent = await extractPdfText(text) || '这份 PDF 未找到可提取的文字层。'; }
+        catch { output.textContent = '无法提取文字，请检查文件、密码和 PDF 组件的网络连接。'; }
+        finally { button.disabled = false; }
+        break;
+      }
       case 'format':
         try { output.textContent = JSON.stringify(JSON.parse(text), null, 2); }
         catch { output.textContent = '请检查 JSON 的引号、逗号和括号。'; }
@@ -508,26 +729,6 @@ for (const form of document.querySelectorAll('[data-tool]')) {
     }
   });
 }
-</script>
-HTML
-      ;;
-    check)
-      cat <<'HTML'
-<script>
-const button = document.querySelector('#check-response');
-const output = document.querySelector('#check-result');
-button.addEventListener('click', async () => {
-  button.disabled = true;
-  output.textContent = '正在请求本页…';
-  try {
-    const response = await fetch(location.href, {method:'HEAD', cache:'no-store', mode:'same-origin', redirect:'error'});
-    output.textContent = `本页响应 HTTP ${response.status}`;
-  } catch {
-    output.textContent = '本页请求失败，请检查当前连接。';
-  } finally {
-    button.disabled = false;
-  }
-});
 </script>
 HTML
       ;;
