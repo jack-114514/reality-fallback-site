@@ -17,10 +17,10 @@ main() {
   local tag=${1:-latest} release_info release_url script first_line
   local -a args=()
   if [[ $tag == --help || $tag == -h ]]; then
-    printf '%s\n' '用法：bash install.sh [latest | v1.0 | --refresh-page | --uninstall]'
+    printf '%s\n' '用法：bash install.sh [latest | v1.0 | --new-site | --refresh-page | --uninstall]'
     return 0
   fi
-  if [[ $tag == --uninstall || $tag == --refresh-page ]]; then
+  if [[ $tag == --uninstall || $tag == --refresh-page || $tag == --new-site ]]; then
     args=("$tag")
     tag=latest
   fi

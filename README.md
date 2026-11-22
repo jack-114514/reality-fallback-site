@@ -1,8 +1,16 @@
 # 静态个人站点部署
 
-首页是一份可直接阅读和编辑的静态个人博客。在 VPS 上用于 REALITY 回落时，浏览器打开博客可验证 HTTPS 连接，代理连接需要在节点客户端中单独验证。
+安装后得到一个可以浏览和编辑的静态个人站点。在 VPS 上用于 REALITY 回落时，浏览器打开这个站点可验证 HTTPS 连接，代理连接需要在节点客户端中单独验证。
 
-首页可在 [GitHub Pages](https://jack-114514.github.io/reality-fallback-site/) 直接打开。`reality-site.sh` 会把同一个 `index.html` 部署到你的 VPS，每台 VPS 填写自己的域名和本机端口。脚本从 Caddy 官方发行页下载对应架构的软件包，按固定 SHA-256 校验，并启动独立的 `reality-site.service`。证书由 Caddy 向 Let's Encrypt 申请和自动续期。
+首次安装会独立抽一种站点类型，再随机组合站名、6 套配色、4 套字体、版面参数和同类内容。页面生成后会在重跑安装时保留。[查看个人博客示例](https://jack-114514.github.io/reality-fallback-site/)
+
+- **个人博客**提供三种首页版式，从 15 篇随笔中选 3 篇。
+- **第一个网站**展示一组近期计划和生活项目。
+- **小白的第一次尝试**展示网页制作练习记录。
+- **个人工具箱**从文字计数、温度与长度换算、JSON 整理和转大写中选 3 个可用工具。
+- **测试服务器**可以手动检查本页实际返回的 HTTP 状态。
+
+每台 VPS 填写自己的域名和本机端口。脚本从 Caddy 官方发行页下载对应架构的软件包，按固定 SHA-256 校验，并启动独立的 `reality-site.service`。证书由 Caddy 向 Let's Encrypt 申请和自动续期。
 
 ## VPS 准备
 
@@ -18,7 +26,7 @@
 在 VPS 的 Bash 终端运行。命令使用固定的下载入口，每次执行都会选用 GitHub 标为 Latest 的正式 Release。首次安装时按提示填写域名和端口，已有部署会读取安装记录。[查看最新发行版](https://github.com/jack-114514/reality-fallback-site/releases/latest)
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/d5e7bf74ce406dc65a68b16855d6f1e5f2875eba/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
   bash -c "$launcher" --
 ```
 
@@ -27,7 +35,7 @@ launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fal
 把命令末尾的 `v1.0` 换成所需标签，例如 `v1.1`。[查看可用标签](https://github.com/jack-114514/reality-fallback-site/tags)
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/d5e7bf74ce406dc65a68b16855d6f1e5f2875eba/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
   bash -c "$launcher" -- v1.0
 ```
 
@@ -36,7 +44,7 @@ launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fal
 卸载会停止并移除 `reality-site.service`，删除本项目的 Caddy 程序、站点配置、首页、网页备份和本地证书数据。自写文章请先另存。原来指向本站点的 REALITY Target 将失去 HTTPS 目标。
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/d5e7bf74ce406dc65a68b16855d6f1e5f2875eba/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
   bash -c "$launcher" -- --uninstall
 ```
 
@@ -90,16 +98,25 @@ curl -fsS --connect-to node.example.com:443:127.0.0.1:8443 \
 
 ## 编辑和更新首页
 
-在 GitHub 打开 [index.html](index.html)，点击铅笔图标（Edit this file）。文件里用中文注释标记了站名、标题、简介和正文的位置。保留第一行 `<!doctype html>`，修改文字后点 **Commit changes** 提交到 `main`。GitHub Pages 会自动发布新版。
+安装生成的页面保存在 `/var/www/reality-site/index.html`。可以在单台 VPS 上直接编辑，保存后刷新浏览器即可。网页内容在部署时生成，访客每次打开会看到同一个站点。
+
+已有 VPS 若想换成一套新组合，执行以下命令。旧首页会备份到 `/etc/reality-site/`。
+
+```bash
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
+  bash -c "$launcher" -- --new-site
+```
+
+GitHub 上的 [index.html](index.html) 用于公开示例，也可以作为自定义共享首页。点击铅笔图标修改，保留第一行 `<!doctype html>`。提交到 `main` 后，GitHub Pages 会发布新版。
 
 要让已安装的 VPS 使用新版首页，在 VPS 上重新下载脚本并运行更新命令。更新前，旧首页会备份到 `/etc/reality-site/`，备份的完整路径会显示在终端。
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/d5e7bf74ce406dc65a68b16855d6f1e5f2875eba/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
   bash -c "$launcher" -- --refresh-page
 ```
 
-也可以在单台 VPS 上直接编辑 `/var/www/reality-site/index.html`。保存后刷新浏览器即可查看。按原参数重跑安装命令会保留已存在的首页。
+按原参数重跑安装命令会保留已存在的首页。
 
 ## 排查
 
