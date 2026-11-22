@@ -14,7 +14,7 @@ github_curl() {
 
 main() {
   (( $# <= 1 )) || fail '请只指定一个版本标签，或使用 --uninstall。'
-  local tag=${1:-latest} release_url script first_line
+  local tag=${1:-latest} release_info release_url script first_line
   local -a args=()
   if [[ $tag == --help || $tag == -h ]]; then
     printf '%s\n' '用法：bash install.sh [latest | v1.0 | --refresh-page | --uninstall]'
@@ -26,10 +26,17 @@ main() {
   fi
 
   if [[ $tag == latest ]]; then
-    release_url=$(github_curl --head --output /dev/null --write-out '%{url_effective}' \
-      "https://github.com/$REPOSITORY/releases/latest") || fail '暂时无法获取 GitHub 最新正式版本。'
-    [[ $release_url == "$RELEASE_TAG_URL"* ]] || fail 'GitHub 未返回有效的 Release 地址。'
-    tag=${release_url#"$RELEASE_TAG_URL"}
+    tag=''
+    if release_info=$(github_curl -H 'Accept: application/vnd.github+json' \
+      "https://api.github.com/repos/$REPOSITORY/releases/latest" 2>/dev/null); then
+      tag=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' <<< "$release_info")
+    fi
+    if [[ -z $tag ]]; then
+      release_url=$(github_curl --head --output /dev/null --write-out '%{url_effective}' \
+        "https://github.com/$REPOSITORY/releases/latest") || fail '暂时无法获取 GitHub 最新正式版本。'
+      [[ $release_url == "$RELEASE_TAG_URL"* ]] || fail 'GitHub 未返回有效的 Release 地址。'
+      tag=${release_url#"$RELEASE_TAG_URL"}
+    fi
   fi
   [[ $tag =~ ^v[0-9]+(\.[0-9]+){1,2}(-[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*)?$ ]] || \
     fail '版本标签格式不正确，请使用 v1.0 或 v1.1 等标签。'
