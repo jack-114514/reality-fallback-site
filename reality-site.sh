@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 umask 022
 
+readonly VERSION=1.1
 readonly CADDY_VERSION=2.11.9
 readonly CONFIG_DIR=/etc/reality-site
 readonly WEB_ROOT=/var/www/reality-site
@@ -25,6 +26,7 @@ usage() {
   sudo bash reality-site.sh node.example.com 9443
   sudo bash reality-site.sh --refresh-page        从 GitHub 更新已部署的首页
   sudo bash reality-site.sh --uninstall           停止服务并删除本项目安装的内容
+  bash reality-site.sh --version                  显示安装脚本版本
 
 需要 Linux、systemd、root、curl、iproute2 和常用 GNU 工具。
 域名应直接解析到 VPS，公网 TCP 80 用于签发和续期，已有 Xray 可继续使用 TCP 443。
@@ -293,6 +295,7 @@ verify_site() {
 
 main() {
   if [[ ${1:-} == --help || ${1:-} == -h ]]; then usage; return; fi
+  if [[ ${1:-} == --version ]]; then printf '%s\n' "$VERSION"; return; fi
   (( $# <= 2 )) || die '参数过多。运行 bash reality-site.sh --help 查看用法。'
   [[ $(uname -s) == Linux && -d /run/systemd/system ]] || die '请在运行 systemd 的 Linux VPS 上执行。'
   (( EUID == 0 )) || die '请以 root 执行，或在命令前加 sudo。'
