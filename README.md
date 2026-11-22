@@ -20,24 +20,33 @@
 - 将公网 TCP `80` 放行到此 VPS，并确保 `80` 空闲，供 HTTP-01 签发、续期和 HTTP 跳转使用。安全组和系统防火墙都需允许该端口。
 - 公网 TCP `443` 由现有 Xray 入站监听。默认网站端口为本机 `127.0.0.1:8443`，可在首次安装时改为其他空闲高端口。Xray 和网站需要共享网络命名空间才能使用这个回环地址。
 
-## 安装或更新
+## 下载和安装
 
-### 安装最新版
+### 安装或更新
 
-在 VPS 的 Bash 终端运行。命令使用固定的下载入口，每次执行都会选用 GitHub 标为 Latest 的正式 Release。首次安装时按提示填写域名和端口，已有部署会读取安装记录。[查看最新发行版](https://github.com/jack-114514/reality-fallback-site/releases/latest)
+在 VPS 的 Bash 终端运行。命令从 `main` 下载启动脚本，由启动脚本选择 GitHub 标为 Latest 的正式发行版。首次安装时按提示填写域名和端口，已有部署会读取安装记录。[查看最新发行版](https://github.com/jack-114514/reality-fallback-site/releases/latest)
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/main/install.sh') &&
   bash -c "$launcher" --
 ```
 
 ### 安装指定版本
 
-把命令末尾的 `v1.0` 换成所需标签，例如 `v1.1`。[查看可用标签](https://github.com/jack-114514/reality-fallback-site/tags)
+把命令末尾的 `v1.0` 换成要安装的发行版标签。[查看可用标签](https://github.com/jack-114514/reality-fallback-site/tags)
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/main/install.sh') &&
   bash -c "$launcher" -- v1.0
+```
+
+## 一键重新生成网站
+
+在已部署的 VPS 上运行。每次都会重新抽取站点类型、内容和样式，生成一份新首页。旧首页先备份到 `/etc/reality-site/`，备份路径会显示在终端。
+
+```bash
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/main/install.sh') &&
+  bash -c "$launcher" -- --new-site
 ```
 
 ## 一键卸载
@@ -45,20 +54,11 @@ launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fal
 卸载会停止并移除 `reality-site.service`，删除本项目的 Caddy 程序、站点配置、首页、网页备份和本地证书数据。自写文章请先另存。原来指向本站点的 REALITY Target 将失去 HTTPS 目标。
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/main/install.sh') &&
   bash -c "$launcher" -- --uninstall
 ```
 
 当前目录或 `/root` 下识别为本项目的 `reality-site.sh` 也会清理。手动改名或放在其他目录的副本需要按实际位置清理。
-
-## 一键重新生成网站
-
-在已部署的 VPS 上运行。每次都会重新抽取站点类型、内容和样式，生成一份新首页。旧首页先备份到 `/etc/reality-site/`，备份路径会显示在终端。
-
-```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
-  bash -c "$launcher" -- --new-site
-```
 
 ## 3X-UI
 
@@ -117,7 +117,7 @@ GitHub 上的 [index.html](index.html) 用于公开示例，也可以作为自�
 要让已安装的 VPS 使用新版首页，在 VPS 上重新下载脚本并运行更新命令。更新前，旧首页会备份到 `/etc/reality-site/`，备份的完整路径会显示在终端。
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/main/install.sh') &&
   bash -c "$launcher" -- --refresh-page
 ```
 
