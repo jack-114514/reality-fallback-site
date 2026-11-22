@@ -16,7 +16,7 @@
 在 VPS 上执行以下命令。也可以打开仓库里的 `reality-site.sh`，点击 **Raw** 复制同一个地址。
 
 ```bash
-curl -fL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/main/reality-site.sh' -o reality-site.sh &&
+curl -fL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/heads/main/reality-site.sh' -o reality-site.sh &&
   sudo bash reality-site.sh
 ```
 
@@ -26,7 +26,7 @@ curl -fL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/ma
 sudo bash reality-site.sh node.example.com 8443
 ```
 
-如需多台 VPS 部署完全相同的脚本版本，可把 Raw URL 里的分支名换成提交 SHA。脚本打印「本机 HTTPS 验证成功」后，会显示实际的 SNI、Target 和 Xver。
+如需多台 VPS 部署完全相同的脚本版本，可把 Raw URL 里的 `refs/heads/main` 换成提交 SHA。脚本打印「本机 HTTPS 验证成功」后，会显示实际的 SNI、Target 和 Xver。
 
 ## 将站点接到现有 REALITY 入站
 
@@ -48,3 +48,4 @@ sudo bash reality-site.sh node.example.com 8443
 - 脚本使用独立的配置和服务。遇到已有网站目录、不同内容的配置或端口冲突时会停下来，并显示需要检查的位置。
 
 [Caddy 证书自动化](https://caddyserver.com/docs/automatic-https) · [Xray REALITY 配置](https://xtls.github.io/config/transports/reality.html)
+
