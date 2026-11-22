@@ -26,18 +26,53 @@ curl -fL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/re
 sudo bash reality-site.sh node.example.com 8443
 ```
 
-如需多台 VPS 部署完全相同的脚本版本，可把 Raw URL 里的 `refs/heads/main` 换成提交 SHA。脚本打印「本机 HTTPS 验证成功」后，会显示实际的 SNI、Target 和 Xver。
+如需多台 VPS 部署完全相同的脚本版本，可把 Raw URL 里的 `refs/heads/main` 换成提交 SHA。脚本打印「本机 HTTPS 验证成功」后，会按 3X-UI 的标签列出填写项，并带上这台 VPS 的实际域名和本机端口。
 
-## 将站点接到现有 REALITY 入站
+## 3X-UI
 
-| 3X-UI 字段 | 填写 |
+以下以 `node.example.com` 和本机端口 `8443` 为例。填写时使用你自己终端显示的域名和端口。已有使用 `443` 的 VLESS + REALITY 入站时，从入站列表编辑该入站。第一次配置时，请先确认公网 TCP `443` 空闲。
+
+### 基础配置、协议和传输
+
+| 标签或字段 | 怎么填 |
 | --- | --- |
-| 入站端口 | 公网 `443` |
-| SNI | 站点域名，省略 `https://` 和端口 |
-| Target / Dest | 脚本输出的本机地址，默认 `127.0.0.1:8443` |
-| Xver | `0` |
+| 基础配置 → 端口 | `443`，这是浏览器和节点客户端连接的公网端口。 |
+| 协议 | `VLESS`。 |
+| 传输 → 传输协议 | `TCP`，有些版本显示为 `RAW`。 |
 
-保存并同步客户端的 SNI 后，从 VPS 外访问 `https://你的域名/`，确认能看到验证页且证书有效。再通过节点客户端测试代理。若 Xray 跑在独立 Docker 网络中，需使用从该容器能访问的 HTTPS 目标地址。
+### 安全
+
+| 面板字段 | 怎么填 |
+| --- | --- |
+| 安全 | `Reality`。 |
+| 显示 | 关闭。此项用于调试输出。 |
+| Xver | `0`。本脚本部署的 Caddy 接收普通 TLS 连接。 |
+| uTLS | `chrome`。 |
+| 目标 / Target / Dest | 复制终端给出的完整本机地址，例如 `127.0.0.1:8443`。末尾的端口是 Caddy 的本机 HTTPS 端口。 |
+| SNI | 复制终端给出的域名，例如 `node.example.com`。只填域名，省略协议、端口和路径，并移除旧域名。 |
+| 最大时间差 (ms) | 新建时填 `0`。 |
+| 最小客户端版本、最大客户端版本 | 新建时留空，沿用当前核心的默认行为。 |
+| Short IDs | 已有值可沿用。新建或空白时点右侧刷新按钮生成。手动设置客户端时选面板列表中的一项。 |
+| SpiderX | 可以沿用面板默认值。新建时也可填 `/`。 |
+| 公钥、私钥 | 新建或空白时点「获取新证书」，面板会生成 REALITY 密钥对。私钥只存服务端，客户端配置使用配对的公钥。网站的 HTTPS 证书由 Caddy 申请。 |
+| mldsa65 Seed、mldsa65 Verify | 新建时可留空。这是一组可选的签名验证参数。 |
+| 主密钥日志 | 留空。 |
+| 限制 Fallback | 新建时用面板默认设置。 |
+
+修改既有节点时，原有客户端的 UUID、REALITY 密钥和 Short IDs 可沿用。更换密钥或 Short IDs 后需要重新导出链接并更新客户端。若 Xray 位于独立 Docker 网络，`127.0.0.1` 指向容器自身，先确认 Xray 能连接到你部署的 HTTPS 站点。 [3X-UI REALITY 说明](https://github.com/MHSanaei/3x-ui/blob/main/docs/content/docs/en/config/reality.mdx) · [Xray REALITY 字段说明](https://xtls.github.io/config/transports/reality.html)
+
+### 扫描、保存和验证
+
+1. 在「目标」旁点「扫描」。目标是 `127.0.0.1` 时，「可用」和「已通过内网/本地网络检测」可以同时出现。核对「使用的 SNI」及「证书」都对应你的域名，并确认 TLS `1.3`、ALPN `h2`。如果面板版本限制扫描本机地址，可以从 VPS 终端运行下方命令验证 Caddy。
+2. 在入站的 VLESS 客户端条目中确认 Flow 为 `xtls-rprx-vision`，保存并重新导出节点链接。在客户端中，连接地址用自有域名，端口为 `443`，SNI 和面板一致。通过面板生成的分享链接会同时提供 UUID、公钥和 Short ID。
+3. 从 VPS 外直接打开 `https://你的域名/`，确认浏览器能看到验证页且证书有效。最后在代理客户端测试连接。本机扫描、浏览器访问和代理客户端连接是三项独立检查。
+
+在 VPS 上直接验证 Caddy 的示例。把域名和 `8443` 换成自己的值，正常应返回 `HTTP 200`。
+
+```bash
+curl -fsS --connect-to node.example.com:443:127.0.0.1:8443 \
+  -o /dev/null -w 'HTTP %{http_code}\n' https://node.example.com/
+```
 
 ## 编辑和更新首页
 

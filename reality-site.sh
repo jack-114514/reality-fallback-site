@@ -171,6 +171,42 @@ fetch_caddy() {
   chmod 755 "$stage/caddy"
 }
 
+print_panel_guide() {
+  local domain=$1 port=$2
+  cat <<EOF
+
+在 3X-UI 填写 VLESS + TCP/RAW + REALITY
+  已有使用 443 的 VLESS + REALITY 入站时，编辑该入站。首次配置时先确认 443 可用。
+
+  [基础配置] 端口                 443
+  [协议]     协议                 VLESS
+  [传输]     传输协议             TCP（有些版本显示为 RAW）
+
+  [安全]     安全                 Reality
+             显示                 关闭
+             Xver                 0
+             uTLS                 chrome
+             目标 / Target / Dest 127.0.0.1:$port
+             SNI                  $domain（删掉旧域名）
+             最大时间差 (ms)      0
+             最小 / 最大客户端版本 新建时留空
+             Short IDs            已有值可沿用；新建时点右侧刷新按钮生成
+             SpiderX              用面板默认值；新建时也可填 /
+             公钥 / 私钥          新建时点「获取新证书」生成 REALITY 密钥对
+             mldsa65 Seed / Verify 新建时留空
+             主密钥日志           留空
+             限制 Fallback        新建时用默认设置
+
+  [客户端]   Flow                 xtls-rprx-vision
+
+保存前可点「扫描」。目标是本机地址，显示「已通过内网/本地网络检测」属正常。
+核对扫描的 SNI 和证书域名都是 $domain，再保存并重新导出客户端链接。
+外部设备打开 https://$domain/ 检查网页，再用客户端测试代理。
+网页路径 $WEB_ROOT/index.html
+逐项填写说明 https://github.com/jack-114514/reality-fallback-site#3x-ui
+EOF
+}
+
 verify_site() {
   local domain=$1 port=$2 deadline=$((SECONDS + 100)) response
   printf '等待本机 HTTPS 及证书验证…\n'
@@ -179,9 +215,7 @@ verify_site() {
       --tlsv1.3 --connect-to "$domain:443:127.0.0.1:$port" \
       --output /dev/null --write-out '%{http_code}' "https://$domain/") && [[ $response == 200 ]]; then
       printf '本机 HTTPS 验证成功，证书可信且网页返回 HTTP 200。\n'
-      printf '\n3X-UI 入站参数\n  SNI       %s\n  Target    127.0.0.1:%s\n  Xver      0\n' "$domain" "$port"
-      printf '公网验证    https://%s/\n网页路径    %s/index.html\n' "$domain" "$WEB_ROOT"
-      printf '公网 443 由现有 Xray 入站监听。保存参数后，从另一台设备验证网页并测试客户端。\n'
+      print_panel_guide "$domain" "$port"
       return 0
     fi
     sleep 3
