@@ -2,7 +2,7 @@
 
 **此静态网页仅用于自建节点的 HTTPS 回落验证。** 在浏览器看到页面并验证证书，可以确认普通 HTTPS 请求到达站点。代理连接需要在节点客户端中单独验证。
 
-`reality-site.sh` 是单文件安装脚本，内置中文首页。每台 VPS 运行时填写它自己的域名和本机端口。脚本从 Caddy 官方发行页下载对应架构的软件包，按固定 SHA-256 校验，并启动独立的 `reality-site.service`。证书由 Caddy 向 Let's Encrypt 申请和自动续期。
+首页可在 [GitHub Pages](https://jack-114514.github.io/reality-fallback-site/) 直接打开。`reality-site.sh` 会把同一个 `index.html` 部署到你的 VPS，每台 VPS 填写自己的域名和本机端口。脚本从 Caddy 官方发行页下载对应架构的软件包，按固定 SHA-256 校验，并启动独立的 `reality-site.service`。证书由 Caddy 向 Let's Encrypt 申请和自动续期。
 
 ## VPS 准备
 
@@ -39,13 +39,25 @@ sudo bash reality-site.sh node.example.com 8443
 
 保存并同步客户端的 SNI 后，从 VPS 外访问 `https://你的域名/`，确认能看到验证页且证书有效。再通过节点客户端测试代理。若 Xray 跑在独立 Docker 网络中，需使用从该容器能访问的 HTTPS 目标地址。
 
-## 更新页面与排查
+## 编辑和更新首页
 
-- 首页文件位于 `/var/www/reality-site/index.html`。可编辑或替换，重新运行安装脚本会保留它。
+在 GitHub 打开 [index.html](index.html)，点击铅笔图标（Edit this file）。文件里用中文注释标记了站名、标题、简介和正文的位置。保留第一行 `<!doctype html>`，修改文字后点 **Commit changes** 提交到 `main`。GitHub Pages 会自动发布新版。
+
+要让已安装的 VPS 使用新版首页，在 VPS 上重新下载脚本并运行更新命令。更新前，旧首页会备份到 `/etc/reality-site/`，备份的完整路径会显示在终端。
+
+```bash
+curl -fL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/heads/main/reality-site.sh' -o reality-site.sh &&
+  sudo bash reality-site.sh --refresh-page
+```
+
+也可以在单台 VPS 上直接编辑 `/var/www/reality-site/index.html`。保存后刷新浏览器即可查看。按原参数重跑安装命令会保留已存在的首页。
+
+## 排查
+
+- 旧版如果在 `/run/reality-site.*/caddy` 报 `Permission denied`，请用上面的 Raw 链接重新下载，再运行常规安装命令。新版在 `/run` 解包，从安装目录执行 Caddy。
 - 查看服务日志时，执行 `sudo journalctl -u reality-site.service -n 60 --no-pager`。
 - 本机验证超时通常需要检查 DNS、TCP `80` 和日志里的证书签发错误。修复后以原域名、原端口重跑脚本即可。Caddy 也会继续尝试签发。
 - 如果本机 HTTPS 验证成功、外部站点却打不开，检查 TCP `443`、Xray 入站及 Target。若网页正常、客户端连接失败，核对客户端的 SNI、公钥、Short ID 和 Flow。
 - 脚本使用独立的配置和服务。遇到已有网站目录、不同内容的配置或端口冲突时会停下来，并显示需要检查的位置。
 
 [Caddy 证书自动化](https://caddyserver.com/docs/automatic-https) · [Xray REALITY 配置](https://xtls.github.io/config/transports/reality.html)
-

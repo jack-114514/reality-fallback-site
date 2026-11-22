@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="此静态网页仅用于自建节点的 HTTPS 回落验证。">
+  <title>自建节点 · HTTPS 回落验证</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      color: #162b26;
+      background: #edf2ed;
+      line-height: 1.65;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: inherit; text-underline-offset: .2em; }
+    a:hover { text-decoration-thickness: 2px; }
+    a:focus-visible { outline: .15rem solid currentColor; outline-offset: .25rem; }
+    .wrap { width: min(100% - 2rem, 62rem); margin-inline: auto; }
+    .bar, footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1.5rem; padding-block: 1.125rem; }
+    .brand { font-weight: 700; }
+    nav { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; }
+    .hero { background: #123b32; color: #f7faf6; padding: clamp(1.5rem, 8vw, 5rem); border-radius: .75rem; }
+    h1 { margin: 0 0 .75rem; font-size: clamp(2rem, 6.5vw, 4rem); line-height: 1.14; }
+    p { margin: 0; }
+    .hero p { font-size: clamp(1rem, 2.6vw, 1.25rem); color: #daebe2; }
+    .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #c9d7ce; margin-block: 1rem; border: 1px solid #c9d7ce; border-radius: .75rem; overflow: hidden; }
+    section { min-width: 0; background: #fff; padding: clamp(1.25rem, 4vw, 2rem); }
+    h2 { margin: 0 0 .65rem; font-size: 1.25rem; }
+    ol { margin: 0; padding-inline-start: 1.3rem; }
+    li + li { margin-top: .5rem; }
+    footer { color: #39564d; }
+    @media (max-width: 42rem) { .checks { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="wrap bar">
+    <!-- 在下方修改站点名称。 -->
+    <span class="brand">自建节点</span>
+    <nav aria-label="页面导航">
+      <a href="#check">访问检查</a>
+      <a href="#about">关于本页</a>
+    </nav>
+  </header>
+  <main class="wrap">
+    <div class="hero">
+      <!-- 在下方修改首页标题和简短说明。 -->
+      <h1>HTTPS 回落验证</h1>
+      <p>此静态网页仅用于自建节点的 HTTPS 回落验证。</p>
+    </div>
+    <div class="checks">
+      <section id="check" aria-labelledby="check-heading">
+        <h2 id="check-heading">访问检查</h2>
+        <ol>
+          <li>打开配置好的域名，确认浏览器地址以 HTTPS 开头。</li>
+          <li>在浏览器中查看证书，确认它覆盖该域名且仍在有效期内。</li>
+          <li>用节点客户端单独测试代理连接。</li>
+        </ol>
+      </section>
+      <section id="about" aria-labelledby="about-heading">
+        <h2 id="about-heading">关于本页</h2>
+        <!-- 在下方填写想公开展示的站点介绍。 -->
+        <p>这个页面可直接在浏览器中打开。通过自己的域名看到此页，说明浏览器已收到站点的 HTTPS 响应。</p>
+      </section>
+    </div>
+  </main>
+  <footer class="wrap">
+    <a href="https://github.com/jack-114514/reality-fallback-site">项目说明</a>
+    <a href="https://github.com/jack-114514/reality-fallback-site/edit/main/index.html">编辑首页</a>
+  </footer>
+</body>
+</html>

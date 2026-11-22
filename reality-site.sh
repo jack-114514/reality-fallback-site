@@ -10,6 +10,7 @@ readonly SERVICE=reality-site.service
 readonly UNIT_PATH="/etc/systemd/system/$SERVICE"
 readonly CADDY="$BIN_DIR/caddy-$CADDY_VERSION"
 readonly DEFAULT_PORT=8443
+readonly PAGE_URL=https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/heads/main/index.html
 
 die() { printf '错误：%s\n' "$*" >&2; exit 1; }
 
@@ -20,6 +21,7 @@ usage() {
   sudo bash reality-site.sh                      交互填写域名和端口
   sudo bash reality-site.sh node.example.com     使用本机端口 8443
   sudo bash reality-site.sh node.example.com 9443
+  sudo bash reality-site.sh --refresh-page        从 GitHub 更新已部署的首页
 
 需要 Linux、systemd、root、curl、iproute2 和常用 GNU 工具。
 域名应直接解析到 VPS，公网 TCP 80 用于签发和续期，已有 Xray 可继续使用 TCP 443。
@@ -97,47 +99,41 @@ WantedBy=multi-user.target
 EOF
 }
 
-write_page() {
-  cat <<'HTML'
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="此静态网页仅用于自建节点的 HTTPS 回落验证。">
-  <title>自建节点 · HTTPS 回落验证</title>
-  <style>
-    :root {
-      color-scheme: light;
-      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-      color: #182a26;
-      background: #edf3ef;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; align-items: center; padding: 1.5rem; }
-    main { width: min(100%, 44rem); margin-inline: auto; padding: clamp(1.5rem, 6vw, 4.25rem); background: #fff; border: 1px solid #b6c9bf; border-top: .35rem solid #16634f; }
-    p { margin: 0; color: #3d564e; line-height: 1.8; }
-    .service { color: #16634f; font-weight: 650; }
-    h1 { margin: .65rem 0 1rem; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.15; letter-spacing: -.035em; }
-    .details { margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid #d4e0da; }
-    h2 { margin: 0 0 .35rem; font-size: 1.1rem; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <p class="service">自建节点</p>
-      <h1>HTTPS 回落验证</h1>
-      <p>此静态网页仅用于自建节点的 HTTPS 回落验证。</p>
-    </header>
-    <section class="details" aria-labelledby="check-title">
-      <h2 id="check-title">如何核验</h2>
-      <p>请确认浏览器地址为配置的域名，并且证书有效。代理连接请通过节点客户端另行测试。</p>
-    </section>
-  </main>
-</body>
-</html>
-HTML
+start_stage() {
+  STAGE=$(mktemp -d /run/reality-site.XXXXXXXX)
+  trap 'rm -rf -- "$STAGE"' EXIT
+}
+
+download_page() {
+  local destination=$1 first_line
+  curl --fail --silent --show-error --location --retry 2 \
+    --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 30 \
+    "$PAGE_URL" --output "$destination" || die '下载 GitHub 首页失败。请检查网络后重试。'
+  IFS= read -r first_line < "$destination" || die '下载的首页为空。'
+  [[ ${first_line,,} == '<!doctype html>' ]] || die 'GitHub 首页的第一行应为 <!doctype html>。'
+}
+
+refresh_page() {
+  local page="$WEB_ROOT/index.html" backup temp_file
+  [[ -f $CONFIG_DIR/deployment && ! -L $CONFIG_DIR && ! -L $CONFIG_DIR/deployment ]] || die '请先完成站点部署。'
+  [[ -d $WEB_ROOT && ! -L $WEB_ROOT && ! -L $page ]] || die '请先检查网站目录及首页路径。'
+  [[ ! -e $page || -f $page ]] || die '现有首页路径不是普通文件。'
+
+  start_stage
+  download_page "$STAGE/index.html"
+  if [[ -f $page ]] && cmp -s "$STAGE/index.html" "$page"; then
+    printf '首页已和 GitHub 上的版本一致。\n'
+    return 0
+  fi
+  if [[ -f $page ]]; then
+    backup=$(mktemp "$CONFIG_DIR/index.html.backup.XXXXXXXX")
+    install -m 600 -- "$page" "$backup"
+    printf '旧首页已备份到 %s\n' "$backup"
+  fi
+  temp_file=$(mktemp "$WEB_ROOT/.index.html.XXXXXXXX")
+  install -m 644 -- "$STAGE/index.html" "$temp_file"
+  mv -fT -- "$temp_file" "$page"
+  printf '首页已更新，刷新浏览器即可查看。\n'
 }
 
 same_or_missing() {
@@ -205,14 +201,21 @@ main() {
   for command in curl ss sha256sum tar systemctl flock getent install cmp; do
     command -v "$command" >/dev/null || die "缺少 $command，请通过系统软件源安装。"
   done
+
+  exec 9>/run/reality-site-install.lock
+  flock -n 9 || die '另一个部署进程正在运行。'
+  if [[ ${1:-} == --refresh-page ]]; then
+    (( $# == 1 )) || die '--refresh-page 无需其他参数。'
+    refresh_page
+    return
+  fi
+
   case $(uname -m) in
     x86_64) arch=amd64; digest=5b8cb7faf8726a2028ad96a66e54e6e81e8f361bc6175e5d22bbd997cc5177fb ;;
     aarch64) arch=arm64; digest=5e377cff994fc9362a6fcf695c53f226cfca3a3ef85bd3a3687cf252d6310165 ;;
     *) die '仅支持 x86_64 和 aarch64。' ;;
   esac
 
-  exec 9>/run/reality-site-install.lock
-  flock -n 9 || die '另一个部署进程正在运行。'
   for path in "$CONFIG_DIR" "$BIN_DIR" "$WEB_ROOT" "$UNIT_PATH" \
     "$CONFIG_DIR/deployment" "$CONFIG_DIR/Caddyfile" "$CADDY" "$WEB_ROOT/index.html"; do
     [[ ! -L $path ]] || die "请先检查符号链接 $path。"
@@ -239,8 +242,7 @@ main() {
   fi
   getent ahosts "$domain" >/dev/null || die "无法解析 $domain，请先配置 DNS。"
 
-  STAGE=$(mktemp -d /run/reality-site.XXXXXXXX)
-  trap 'rm -rf -- "$STAGE"' EXIT
+  start_stage
   write_caddyfile "$domain" "$port" > "$STAGE/Caddyfile"
   write_unit > "$STAGE/$SERVICE"
   same_or_missing "$STAGE/Caddyfile" "$CONFIG_DIR/Caddyfile"
@@ -256,8 +258,9 @@ main() {
     fetch_caddy "$STAGE" "$arch" "$digest"
     candidate=$STAGE/caddy
   fi
-  XDG_DATA_HOME="$STAGE" XDG_CONFIG_HOME="$STAGE" \
-    "$candidate" validate --config "$STAGE/Caddyfile" --adapter caddyfile
+  if [[ ! -e $WEB_ROOT/index.html ]]; then
+    download_page "$STAGE/index.html"
+  fi
 
   printf '部署 %s，站点 HTTPS 监听 127.0.0.1:%s。\n' "$domain" "$port"
   install -d -m 755 -- "$CONFIG_DIR"
@@ -267,8 +270,13 @@ main() {
     [[ -d $path ]] || install -d -m 755 -- "$path"
   done
   write_new_file "$candidate" "$CADDY" 755
-  write_page > "$STAGE/index.html"
-  write_new_file "$STAGE/index.html" "$WEB_ROOT/index.html" 644
+  # /run is only staging storage and may be mounted noexec.
+  XDG_DATA_HOME="$STAGE" XDG_CONFIG_HOME="$STAGE" \
+    "$CADDY" validate --config "$STAGE/Caddyfile" --adapter caddyfile || \
+    die "Caddy 无法从安装路径运行或配置不通过。请检查 $CADDY 的执行权限及上方日志。"
+  if [[ -f $STAGE/index.html ]]; then
+    write_new_file "$STAGE/index.html" "$WEB_ROOT/index.html" 644
+  fi
   write_new_file "$STAGE/Caddyfile" "$CONFIG_DIR/Caddyfile" 644
   write_new_file "$STAGE/$SERVICE" "$UNIT_PATH" 644
 
