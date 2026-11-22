@@ -1,6 +1,6 @@
-# 自建节点 HTTPS 回落验证页
+# 静态个人站点部署
 
-**此静态网页仅用于自建节点的 HTTPS 回落验证。** 在浏览器看到页面并验证证书，可以确认普通 HTTPS 请求到达站点。代理连接需要在节点客户端中单独验证。
+首页是一份可直接阅读和编辑的静态个人博客。在 VPS 上用于 REALITY 回落时，浏览器打开博客可验证 HTTPS 连接，代理连接需要在节点客户端中单独验证。
 
 首页可在 [GitHub Pages](https://jack-114514.github.io/reality-fallback-site/) 直接打开。`reality-site.sh` 会把同一个 `index.html` 部署到你的 VPS，每台 VPS 填写自己的域名和本机端口。脚本从 Caddy 官方发行页下载对应架构的软件包，按固定 SHA-256 校验，并启动独立的 `reality-site.service`。证书由 Caddy 向 Let's Encrypt 申请和自动续期。
 
@@ -86,6 +86,23 @@ curl -fL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/re
 ```
 
 也可以在单台 VPS 上直接编辑 `/var/www/reality-site/index.html`。保存后刷新浏览器即可查看。按原参数重跑安装命令会保留已存在的首页。
+
+## 一键卸载
+
+在 VPS 上复制执行这一段。以 root 登录时，把 `sudo bash` 改为 `bash`。
+
+```bash
+(
+  installer=$(mktemp) || exit 1
+  trap 'rm -f -- "$installer"' EXIT
+  curl -fL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/heads/main/reality-site.sh' -o "$installer" &&
+    sudo bash "$installer" --uninstall
+)
+```
+
+卸载会停止并移除 `reality-site.service`，删除项目的 Caddy 程序、站点配置、首页、网页备份和本地证书数据。当前目录或 `/root` 下识别为本项目的 `reality-site.sh` 也会清理。重要的自定义文章请先备份。在其他路径手动下载或改名的文件需要按实际位置清理。
+
+卸载后，原来指向本站点的 REALITY Target 将失去 HTTPS 目标。其他服务、Xray 与 3X-UI 配置、DNS 和防火墙规则保留。
 
 ## 排查
 
