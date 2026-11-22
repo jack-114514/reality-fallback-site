@@ -103,7 +103,8 @@ EOF
 }
 
 start_stage() {
-  STAGE=$(mktemp -d /run/reality-site.XXXXXXXX)
+  # Keep the archive and extracted binary off systemd's /run tmpfs.
+  STAGE=$(mktemp -d /var/tmp/reality-site.XXXXXXXX) || die '无法在 /var/tmp 创建安装临时目录。'
   trap 'rm -rf -- "$STAGE"' EXIT
 }
 
@@ -376,7 +377,7 @@ main() {
     [[ -d $path ]] || install -d -m 755 -- "$path"
   done
   write_new_file "$candidate" "$CADDY" 755
-  # /run is only staging storage and may be mounted noexec.
+  # The temporary filesystem may be mounted noexec.
   XDG_DATA_HOME="$STAGE" XDG_CONFIG_HOME="$STAGE" \
     "$CADDY" validate --config "$STAGE/Caddyfile" --adapter caddyfile || \
     die "Caddy 无法从安装路径运行或配置不通过。请检查 $CADDY 的执行权限及上方日志。"
@@ -386,7 +387,9 @@ main() {
   write_new_file "$STAGE/Caddyfile" "$CONFIG_DIR/Caddyfile" 644
   write_new_file "$STAGE/$SERVICE" "$UNIT_PATH" 644
 
-  systemctl daemon-reload
+  rm -rf -- "$STAGE"
+  trap - EXIT
+  systemctl daemon-reload || die 'systemd 未能重载。若上方提示 /run 空间不足，请运行 df -h /run 查看剩余空间，处理后按原参数重试。'
   systemctl enable --now "$SERVICE"
   verify_site "$domain" "$port"
 }

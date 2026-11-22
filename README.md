@@ -106,7 +106,8 @@ curl -fL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/re
 
 ## 排查
 
-- 旧版如果在 `/run/reality-site.*/caddy` 报 `Permission denied`，请用上面的 Raw 链接重新下载，再运行常规安装命令。新版在 `/run` 解包，从安装目录执行 Caddy。
+- 旧版如果在 `/run/reality-site.*/caddy` 报 `Permission denied`，或 `systemctl daemon-reload` 提示 `/run/systemd` 空间不足，请用上面的 Raw 链接重新下载，再按原域名和端口运行安装命令。新版在 `/var/tmp` 解包，从安装目录执行 Caddy，并在 systemd 重载前清理临时文件。
+- 若新版重载时仍报告空间不足，用 `df -h /run` 查看剩余空间，再用 `du -xhd1 /run | sort -h` 检查占用。
 - 查看服务日志时，执行 `sudo journalctl -u reality-site.service -n 60 --no-pager`。
 - 本机验证超时通常需要检查 DNS、TCP `80` 和日志里的证书签发错误。修复后以原域名、原端口重跑脚本即可。Caddy 也会继续尝试签发。
 - 如果本机 HTTPS 验证成功、外部站点却打不开，检查 TCP `443`、Xray 入站及 Target。若网页正常、客户端连接失败，核对客户端的 SNI、公钥、Short ID 和 Flow。
