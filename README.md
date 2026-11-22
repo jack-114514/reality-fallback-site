@@ -15,10 +15,10 @@
 
 ### 安装最新版
 
-在 VPS 的 Bash 终端运行。每次执行都选用 GitHub 标为 Latest 的正式 Release。首次安装时按提示填写域名和端口，已有部署会读取安装记录。[查看最新发行版](https://github.com/jack-114514/reality-fallback-site/releases/latest)
+在 VPS 的 Bash 终端运行。命令使用固定的下载入口，每次执行都会选用 GitHub 标为 Latest 的正式 Release。首次安装时按提示填写域名和端口，已有部署会读取安装记录。[查看最新发行版](https://github.com/jack-114514/reality-fallback-site/releases/latest)
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/heads/main/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/d5e7bf74ce406dc65a68b16855d6f1e5f2875eba/install.sh') &&
   bash -c "$launcher" --
 ```
 
@@ -27,7 +27,7 @@ launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fal
 把命令末尾的 `v1.0` 换成所需标签，例如 `v1.1`。[查看可用标签](https://github.com/jack-114514/reality-fallback-site/tags)
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/heads/main/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/d5e7bf74ce406dc65a68b16855d6f1e5f2875eba/install.sh') &&
   bash -c "$launcher" -- v1.0
 ```
 
@@ -36,7 +36,7 @@ launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fal
 卸载会停止并移除 `reality-site.service`，删除本项目的 Caddy 程序、站点配置、首页、网页备份和本地证书数据。自写文章请先另存。原来指向本站点的 REALITY Target 将失去 HTTPS 目标。
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/heads/main/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/d5e7bf74ce406dc65a68b16855d6f1e5f2875eba/install.sh') &&
   bash -c "$launcher" -- --uninstall
 ```
 
@@ -95,7 +95,7 @@ curl -fsS --connect-to node.example.com:443:127.0.0.1:8443 \
 要让已安装的 VPS 使用新版首页，在 VPS 上重新下载脚本并运行更新命令。更新前，旧首页会备份到 `/etc/reality-site/`，备份的完整路径会显示在终端。
 
 ```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/heads/main/install.sh') &&
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/d5e7bf74ce406dc65a68b16855d6f1e5f2875eba/install.sh') &&
   bash -c "$launcher" -- --refresh-page
 ```
 
