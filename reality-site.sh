@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 umask 022
 
-readonly VERSION=1.2
+readonly VERSION=1.2.1
 readonly CADDY_VERSION=2.11.9
 readonly CONFIG_DIR=/etc/reality-site
 readonly WEB_ROOT=/var/www/reality-site
@@ -141,15 +141,75 @@ readonly -a SITE_PALETTES=(
   '#f2f1fa|#30294a|#57516d|#584099|#e6e2f4|#c8bfdd'
   '#1b2928|#f0f3eb|#c4d2c9|#afd29f|#263734|#4f665b'
 )
-readonly -a SITE_FONTS=(
-  '"Songti SC",SimSun,serif|system-ui,"Microsoft YaHei",sans-serif'
-  'system-ui,"PingFang SC","Microsoft YaHei",sans-serif|system-ui,"Microsoft YaHei",sans-serif'
-  '"Kaiti SC",KaiTi,serif|"Noto Serif CJK SC",SimSun,serif'
-  '"Noto Serif CJK SC","Songti SC",serif|"Noto Serif CJK SC",SimSun,serif'
+readonly -a SITE_HEADINGS=(
+  '"Songti SC",SimSun,Georgia,serif'
+  'system-ui,"PingFang SC","Microsoft YaHei",sans-serif'
+  '"Kaiti SC",KaiTi,"STKaiti",Georgia,serif'
+  '"Noto Serif CJK SC","Source Han Serif SC",Cambria,serif'
+  '"FangSong","STFangsong",Georgia,serif'
+  '"Source Han Sans SC","Microsoft YaHei UI",Arial,sans-serif'
+  '"Noto Sans Mono CJK SC","Microsoft YaHei",Consolas,monospace'
+)
+readonly -a SITE_BODY_FONTS=(
+  'system-ui,"Microsoft YaHei",sans-serif'
+  '"Noto Serif CJK SC","Songti SC",SimSun,serif'
+  '"PingFang SC","Noto Sans CJK SC",Arial,sans-serif'
+  '"Microsoft YaHei UI","Noto Sans SC",Tahoma,sans-serif'
+  '"Kaiti SC",KaiTi,"STKaiti",Georgia,serif'
 )
 
+shade_color() {
+  local hex=$1 endpoint=$2 amount=$3
+  printf '#%02x%02x%02x' \
+    "$(((16#${hex:1:2} * (100 - amount) + endpoint * amount + 50) / 100))" \
+    "$(((16#${hex:3:2} * (100 - amount) + endpoint * amount + 50) / 100))" \
+    "$(((16#${hex:5:2} * (100 - amount) + endpoint * amount + 50) / 100))"
+}
+
+site_theme() {
+  local digest=$1 paper ink muted accent surface rule heading body background_toward ink_toward
+  local palette measure hero_space radius gap text_size title_size section_size weight nav nav_gap action start end
+  local -a navigation=(space-between flex-start center)
+  local -a controls=(start center end)
+  palette=$((16#${digest:2:2} % ${#SITE_PALETTES[@]}))
+  IFS='|' read -r paper ink muted accent surface rule <<< "${SITE_PALETTES[palette]}"
+  # Darken text on light backgrounds, and lighten it on the dark palette.
+  if (( 16#${paper:1:2} < 128 )); then background_toward=0; ink_toward=255; else background_toward=255; ink_toward=0; fi
+  paper=$(shade_color "$paper" "$background_toward" "$((16#${digest:28:2} % 26))")
+  surface=$(shade_color "$surface" "$background_toward" "$((16#${digest:30:2} % 31))")
+  ink=$(shade_color "$ink" "$ink_toward" "$((16#${digest:32:2} % 27))")
+  muted=$(shade_color "$muted" "$ink_toward" "$((16#${digest:34:2} % 21))")
+  accent=$(shade_color "$accent" "$ink_toward" "$((16#${digest:36:2} % 21))")
+  heading=${SITE_HEADINGS[16#${digest:4:2} % ${#SITE_HEADINGS[@]}]}
+  body=${SITE_BODY_FONTS[16#${digest:26:2} % ${#SITE_BODY_FONTS[@]}]}
+  measure=$((57 + 16#${digest:18:2} % 18))
+  hero_space=$((45 + 16#${digest:20:2} % 38))
+  radius=$((16#${digest:22:2} % 19))
+  gap=$((12 + 16#${digest:24:2} % 15))
+  text_size=$((16 + 16#${digest:38:2} % 4))
+  title_size=$((58 + 16#${digest:40:2} % 31))
+  section_size=$((24 + 16#${digest:42:2} % 9))
+  weight=$((500 + 100 * (16#${digest:44:2} % 4)))
+  nav=${navigation[16#${digest:46:2} % ${#navigation[@]}]}
+  nav_gap=$((14 + 16#${digest:48:2} % 15))
+  action=${controls[16#${digest:50:2} % ${#controls[@]}]}
+  case "$action" in
+    start) start=0; end=auto;;
+    center) start=auto; end=auto;;
+    end) start=auto; end=0;;
+  esac
+  cat <<EOF
+:root {
+  --paper:$paper; --ink:$ink; --muted:$muted; --accent:$accent; --surface:$surface; --rule:$rule;
+  --heading:$heading; --body:$body; --text-size:${text_size}px; --title-max:${title_size}px; --section-max:${section_size}px; --heading-weight:$weight;
+  --measure:${measure}rem; --hero:${hero_space}px; --radius:${radius}px; --gap:${gap}px;
+  --nav-justify:$nav; --nav-gap:${nav_gap}px; --action-align:$action; --action-start:$start; --action-end:$end;
+}
+EOF
+}
+
 render_blog() {
-  local digest choice record name intro about layout paper ink muted accent surface rule heading body measure hero_space gap
+  local digest choice record name intro about layout theme
   local -a identities=(
     '留白笔记|读到的几句话，路过的几条街。|喜欢把一件小事多看一会儿，偶尔记下它的起因和后来。'
     '窗边摘录|窗台、书页和周末的短文。|这里是几本随身笔记的续页，有观察，也有随手记下的问题。'
@@ -182,12 +242,8 @@ render_blog() {
 
   digest=$(printf '%s' "$1" | sha256sum)
   IFS='|' read -r name intro about <<< "${identities[16#${digest:0:2} % ${#identities[@]}]}"
-  IFS='|' read -r paper ink muted accent surface rule <<< "${SITE_PALETTES[16#${digest:2:2} % ${#SITE_PALETTES[@]}]}"
-  IFS='|' read -r heading body <<< "${SITE_FONTS[16#${digest:4:2} % ${#SITE_FONTS[@]}]}"
+  theme=$(site_theme "$digest")
   layout=${layouts[16#${digest:6:2} % ${#layouts[@]}]}
-  measure=$((58 + 16#${digest:18:2} % 17))
-  hero_space=$((45 + 16#${digest:20:2} % 38))
-  gap=$((17 + 16#${digest:22:2} % 13))
   for i in 8 10 12; do
     choice=$((16#${digest:i:2} % ${#articles[@]}))
     record=${articles[choice]}
@@ -206,21 +262,21 @@ render_blog() {
 <meta name="description" content="$intro">
 <title>$name</title>
 <style>
-:root { --paper:$paper; --ink:$ink; --muted:$muted; --accent:$accent; --surface:$surface; --rule:$rule; --heading:$heading; --body:$body; --measure:${measure}rem; --hero:${hero_space}px; --gap:${gap}px; }
+$theme
 * { box-sizing:border-box; }
-body { margin:0; background:var(--paper); color:var(--ink); font:1rem/1.75 var(--body); }
+body { margin:0; background:var(--paper); color:var(--ink); font:var(--text-size)/1.75 var(--body); }
 a { color:inherit; text-underline-offset:.22em; }
 a:hover { color:var(--accent); }
 a:focus-visible { outline:2px solid var(--accent); outline-offset:.25rem; }
 .skip { position:absolute; inset-block-start:.5rem; inset-inline-start:.5rem; padding:.4rem .8rem; transform:translateY(-160%); background:var(--paper); }
 .skip:focus { transform:none; }
 .wrap { width:min(var(--measure), calc(100% - 2.25rem)); margin-inline:auto; }
-.bar { display:flex; justify-content:space-between; align-items:center; gap:.7rem 1.25rem; flex-wrap:wrap; padding-block:1.15rem; border-bottom:1px solid var(--rule); }
-.bar nav { display:flex; gap:1.25rem; }
+.bar { display:flex; justify-content:var(--nav-justify); align-items:center; gap:.7rem var(--nav-gap); flex-wrap:wrap; padding-block:1.15rem; border-bottom:1px solid var(--rule); }
+.bar nav { display:flex; gap:var(--nav-gap); }
 .brand { font:700 1.25rem/1.3 var(--heading); text-decoration:none; }
-h1,h2 { font-family:var(--heading); line-height:1.22; overflow-wrap:anywhere; }
-h1 { font-size:clamp(2.45rem, 8vw, 5.6rem); letter-spacing:-.04em; margin:0 0 .55rem; }
-h2 { font-size:clamp(1.42rem, 3.8vw, 2rem); margin:.25rem 0 .8rem; }
+h1,h2 { font-family:var(--heading); font-weight:var(--heading-weight); line-height:1.22; overflow-wrap:anywhere; }
+h1 { font-size:clamp(2.45rem, 8vw, var(--title-max)); letter-spacing:-.04em; margin:0 0 .55rem; }
+h2 { font-size:clamp(1.42rem, 3.8vw, var(--section-max)); margin:.25rem 0 .8rem; }
 p { margin:0 0 .8rem; }
 article p:last-child, .hero p, .about p { margin-bottom:0; }
 .main { padding-block:clamp(1.65rem, 6vw, var(--hero)); }
@@ -236,17 +292,17 @@ article { scroll-margin-top:1rem; padding:1.35rem 0; border-top:1px solid var(--
 .journal .menu { margin-bottom:1.4rem; border-width:1px 0; }
 .journal .menu ul { display:flex; flex-wrap:wrap; gap:.2rem 1.25rem; list-style:none; padding:0; }
 .archive .main { display:grid; grid-template-columns:minmax(12rem, .65fr) minmax(0, 1.35fr); align-items:start; gap:clamp(1.25rem, 4vw, 3.5rem); }
-.archive .hero h1,.feature .hero h1 { font-size:clamp(2rem, 5vw, 3.7rem); }
+.archive .hero h1,.feature .hero h1 { font-size:clamp(2rem, 5vw, calc(var(--title-max) - 16px)); }
 .archive .menu { background:var(--surface); margin-top:1.3rem; }
 .archive article:first-child { border-top:0; padding-top:0; }
 .feature .hero { border-left:3px solid var(--accent); padding-left:1rem; margin-bottom:1.25rem; }
 .feature .lead { background:var(--surface); margin-bottom:1.4rem; padding:clamp(1.2rem, 5vw, 3.5rem); }
-.feature .lead h2 { font-size:clamp(2rem, 5vw, 3.25rem); }
+.feature .lead h2 { font-size:clamp(1.75rem, 5vw, calc(var(--section-max) + 16px)); }
 .feature .lead article { padding:0; border:0; max-width:45rem; }
 .feature .grid { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:var(--gap); margin-top:1.4rem; }
 .about { padding-block:1rem 2rem; }
 .about h2 { font-size:1.35rem; }
-footer { border-top:1px solid var(--rule); padding-block:1rem 1.5rem; }
+footer { border-top:1px solid var(--rule); padding-block:1rem 1.5rem; text-align:var(--action-align); }
 @media (max-width:40rem) { .archive .main,.feature .grid { grid-template-columns:1fr; } }
 </style>
 </head>
@@ -299,7 +355,7 @@ tool_card() {
 }
 
 render_other_site() {
-  local digest=$1 type=$2 name intro nav_label paper ink muted accent surface rule heading body choice i detail title measure hero_space radius gap
+  local digest=$1 type=$2 name intro nav_label theme choice i detail title url
   local -a names=() cards=() tools=(count temperature length format uppercase)
   case "$type" in
     home)
@@ -331,6 +387,17 @@ render_other_site() {
       intro='几个在浏览器里就能用的小工具。'
       nav_label='工具'
       ;;
+    links)
+      names=('官网导航工具箱' '常用官网书签' '网页路标' '桌面导航卡' '官网入口集' '常用网站收藏')
+      intro='常用的官方网站，打开就能找到产品、支持和搜索入口。'
+      nav_label='官网目录'
+      cards=(
+        '苹果|https://www.apple.com/|iPhone、Mac 和 Apple 服务。'
+        '微软|https://www.microsoft.com/|Windows、Microsoft 365 和支持。'
+        '英特尔|https://www.intel.com/|处理器、驱动程序和技术资料。'
+        '百度|https://www.baidu.com/|网页搜索和站点查找。'
+      )
+      ;;
     check)
       names=('测试服务器' '站点测试台' '页面部署实验' '单页站自检' '网页实验室' '浏览器小测试')
       intro='用这页检查网页能否打开、站内链接能否跳转，以及本页的响应状态。'
@@ -339,12 +406,7 @@ render_other_site() {
       ;;
   esac
   name=${names[16#${digest:0:2} % ${#names[@]}]}
-  IFS='|' read -r paper ink muted accent surface rule <<< "${SITE_PALETTES[16#${digest:2:2} % ${#SITE_PALETTES[@]}]}"
-  IFS='|' read -r heading body <<< "${SITE_FONTS[16#${digest:4:2} % ${#SITE_FONTS[@]}]}"
-  measure=$((57 + 16#${digest:18:2} % 15))
-  hero_space=$((45 + 16#${digest:20:2} % 35))
-  radius=$((16#${digest:22:2} % 19))
-  gap=$((12 + 16#${digest:24:2} % 15))
+  theme=$(site_theme "$digest")
 
   cat <<EOF
 <!doctype html>
@@ -355,16 +417,16 @@ render_other_site() {
 <meta name="description" content="$intro">
 <title>$name</title>
 <style>
-:root { --paper:$paper; --ink:$ink; --muted:$muted; --accent:$accent; --surface:$surface; --rule:$rule; --heading:$heading; --body:$body; --measure:${measure}rem; --hero:${hero_space}px; --radius:${radius}px; --gap:${gap}px; }
+$theme
 * { box-sizing:border-box; }
-body { margin:0; background:var(--paper); color:var(--ink); font:1rem/1.62 var(--body); }
+body { margin:0; background:var(--paper); color:var(--ink); font:var(--text-size)/1.62 var(--body); }
 .wrap { width:min(var(--measure), calc(100% - 2.25rem)); margin-inline:auto; }
 header,footer { padding-block:1rem; border-bottom:1px solid var(--rule); }
-header { display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap; }
+header { display:flex; justify-content:var(--nav-justify); gap:var(--nav-gap); align-items:center; flex-wrap:wrap; }
 a { color:inherit; text-underline-offset:.24em; }
-h1,h2 { font-family:var(--heading); line-height:1.2; overflow-wrap:anywhere; }
-h1 { font-size:clamp(2.4rem, 7vw, 5rem); margin:0 0 .6rem; }
-h2 { font-size:1.3rem; margin:0 0 .65rem; }
+h1,h2 { font-family:var(--heading); font-weight:var(--heading-weight); line-height:1.2; overflow-wrap:anywhere; }
+h1 { font-size:clamp(2.4rem, 7vw, var(--title-max)); margin:0 0 .6rem; }
+h2 { font-size:clamp(1.25rem, 3vw, var(--section-max)); margin:0 0 .65rem; }
 p { margin:0; }
 .intro { padding-block:clamp(2rem, 6vw, var(--hero)); }
 .intro p,.card p { color:var(--muted); }
@@ -374,13 +436,18 @@ p { margin:0; }
 .learner .wrap { max-width:45rem; }
 .learner .grid { display:grid; grid-template-columns:1fr; padding-left:1rem; border-left:2px solid var(--accent); }
 .tools .intro { padding-block:2.5rem; }
+.links .grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr)); }
+.links .intro { border-bottom:1px solid var(--rule); margin-bottom:var(--gap); }
+.link-actions { text-align:var(--action-align); margin-top:.9rem; }
+.link-actions a { display:inline-block; padding:.35rem .8rem; color:var(--paper); background:var(--accent); text-decoration:none; border-radius:var(--radius); }
+.link-actions a:hover { text-decoration:underline; }
 .check .intro { margin:1rem 0; padding:clamp(1rem, 4vw, 2rem); background:var(--surface); }
 .check .grid { margin-top:1rem; }
-footer { border-bottom:none; border-top:1px solid var(--rule); margin-top:2.5rem; }
+footer { border-bottom:none; border-top:1px solid var(--rule); margin-top:2.5rem; text-align:var(--action-align); }
 button,input,textarea { font:inherit; }
 textarea,input { width:100%; color:var(--ink); background:var(--paper); border:1px solid var(--accent); padding:.45rem .55rem; margin:.35rem 0 .65rem; }
 textarea { resize:vertical; }
-button { cursor:pointer; color:var(--paper); background:var(--accent); border:1px solid var(--accent); padding:.35rem .8rem; }
+button { display:block; margin-inline-start:var(--action-start); margin-inline-end:var(--action-end); cursor:pointer; color:var(--paper); background:var(--accent); border:1px solid var(--accent); padding:.35rem .8rem; border-radius:var(--radius); }
 output { display:block; margin-top:.55rem; white-space:pre-wrap; overflow-wrap:anywhere; }
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 </style>
@@ -402,6 +469,14 @@ HTML
       choice=$((16#${digest:i:2} % ${#tools[@]}))
       tool_card "${tools[choice]}"
       tools=("${tools[@]:0:choice}" "${tools[@]:choice+1}")
+    done
+  elif [[ $type == links ]]; then
+    for i in 8 10 12 16; do
+      choice=$((16#${digest:i:2} % ${#cards[@]}))
+      IFS='|' read -r title url detail <<< "${cards[choice]}"
+      printf '<article class="card"><h2>%s</h2><p>%s</p><p class="link-actions"><a href="%s" rel="noreferrer">打开%s官网</a></p></article>\n' \
+        "$title" "$detail" "$url" "$title"
+      cards=("${cards[@]:0:choice}" "${cards[@]:choice+1}")
     done
   else
     for i in 8 10 12; do
@@ -462,7 +537,7 @@ HTML
 
 render_site() {
   local digest type
-  local -a types=(blog home learner tools check)
+  local -a types=(blog home learner tools check links)
   digest=$(printf '%s' "$1" | sha256sum)
   type=${types[16#${digest:14:4} % ${#types[@]}]}
   if [[ $type == blog ]]; then render_blog "$1"; else render_other_site "$digest" "$type"; fi
@@ -490,14 +565,22 @@ save_site_seed() {
 }
 
 refresh_page() {
-  local page="$WEB_ROOT/index.html" backup temp_file
+  local page="$WEB_ROOT/index.html" backup temp_file attempt
   [[ -f $CONFIG_DIR/deployment && ! -L $CONFIG_DIR && ! -L $CONFIG_DIR/deployment ]] || die '请先完成站点部署。'
   [[ -d $WEB_ROOT && ! -L $WEB_ROOT && ! -L $page ]] || die '请先检查网站目录及首页路径。'
   [[ ! -e $page || -f $page ]] || die '现有首页路径不是普通文件。'
   [[ ! -L $CONFIG_DIR/site-seed ]] || die '站点生成记录不能是符号链接。'
 
   start_stage
-  if [[ ${1:-} == new-site ]]; then stage_site new-site; else download_page "$STAGE/index.html"; fi
+  if [[ ${1:-} == new-site ]]; then
+    for attempt in 1 2 3; do
+      stage_site new-site
+      if ! cmp -s "$STAGE/index.html" "$page"; then break; fi
+    done
+    if cmp -s "$STAGE/index.html" "$page"; then die '抽样结果仍与现有首页相同，请重试。'; fi
+  else
+    download_page "$STAGE/index.html"
+  fi
   if [[ -f $page ]] && cmp -s "$STAGE/index.html" "$page"; then
     printf '首页已和 GitHub 上的版本一致。\n'
     return 0

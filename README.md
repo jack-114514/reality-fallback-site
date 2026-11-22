@@ -2,12 +2,13 @@
 
 安装后得到一个可以浏览和编辑的静态个人站点。在 VPS 上用于 REALITY 回落时，浏览器打开这个站点可验证 HTTPS 连接，代理连接需要在节点客户端中单独验证。
 
-首次安装会独立抽一种站点类型，再随机组合站名、6 套配色、4 套字体、版面参数和同类内容。页面生成后会在重跑安装时保留。[查看个人博客示例](https://jack-114514.github.io/reality-fallback-site/)
+首次安装会独立抽取站点类型，并为整站随机组合内容和样式。所有类型共用 6 套基础色系、7 组标题字体和 5 组正文字体。标题字重、字号、背景与文字色调、卡片间距、导航和按钮对齐方式也会随站点变化。页面生成后会在重跑安装时保留。[查看个人博客示例](https://jack-114514.github.io/reality-fallback-site/)
 
 - **个人博客**提供三种首页版式，从 15 篇随笔中选 3 篇。
 - **第一个网站**展示一组近期计划和生活项目。
 - **小白的第一次尝试**展示网页制作练习记录。
 - **个人工具箱**从文字计数、温度与长度换算、JSON 整理和转大写中选 3 个可用工具。
+- **官网导航工具箱**以随机顺序展示苹果、微软、英特尔和百度的官网链接。
 - **测试服务器**可以手动检查本页实际返回的 HTTP 状态。
 
 每台 VPS 填写自己的域名和本机端口。脚本从 Caddy 官方发行页下载对应架构的软件包，按固定 SHA-256 校验，并启动独立的 `reality-site.service`。证书由 Caddy 向 Let's Encrypt 申请和自动续期。
@@ -49,6 +50,15 @@ launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fal
 ```
 
 当前目录或 `/root` 下识别为本项目的 `reality-site.sh` 也会清理。手动改名或放在其他目录的副本需要按实际位置清理。
+
+## 一键重新生成网站
+
+在已部署的 VPS 上运行。每次都会重新抽取站点类型、内容和样式，生成一份新首页。旧首页先备份到 `/etc/reality-site/`，备份路径会显示在终端。
+
+```bash
+launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
+  bash -c "$launcher" -- --new-site
+```
 
 ## 3X-UI
 
@@ -100,12 +110,7 @@ curl -fsS --connect-to node.example.com:443:127.0.0.1:8443 \
 
 安装生成的页面保存在 `/var/www/reality-site/index.html`。可以在单台 VPS 上直接编辑，保存后刷新浏览器即可。网页内容在部署时生成，访客每次打开会看到同一个站点。
 
-已有 VPS 若想换成一套新组合，执行以下命令。旧首页会备份到 `/etc/reality-site/`。
-
-```bash
-launcher=$(curl -fsSL 'https://raw.githubusercontent.com/jack-114514/reality-fallback-site/refs/tags/v1.2/install.sh') &&
-  bash -c "$launcher" -- --new-site
-```
+已有 VPS 可以使用[一键重新生成网站](#一键重新生成网站)换一套内容和样式。
 
 GitHub 上的 [index.html](index.html) 用于公开示例，也可以作为自定义共享首页。点击铅笔图标修改，保留第一行 `<!doctype html>`。提交到 `main` 后，GitHub Pages 会发布新版。
 
