@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 umask 022
 
-readonly VERSION=1.3
+readonly VERSION=1.3.1
 readonly CADDY_VERSION=2.11.9
 readonly CONFIG_DIR=/etc/reality-site
 readonly WEB_ROOT=/var/www/reality-site
@@ -271,8 +271,7 @@ shade_color() {
 
 site_theme() {
   local digest=$1 paper ink muted accent surface rule heading body background_toward ink_toward
-  local palette measure hero_space radius gap text_size title_size section_size weight nav nav_gap action start end
-  local -a navigation=(space-between flex-start center)
+  local palette measure hero_space radius gap text_size title_size section_size weight nav_gap action start end intro_align
   local -a controls=(start center end)
   palette=$((16#${digest:2:2} % ${#SITE_PALETTES[@]}))
   IFS='|' read -r paper ink muted accent surface rule <<< "${SITE_PALETTES[palette]}"
@@ -293,9 +292,9 @@ site_theme() {
   title_size=$((58 + 16#${digest:40:2} % 31))
   section_size=$((24 + 16#${digest:42:2} % 9))
   weight=$((500 + 100 * (16#${digest:44:2} % 4)))
-  nav=${navigation[16#${digest:46:2} % ${#navigation[@]}]}
   nav_gap=$((14 + 16#${digest:48:2} % 15))
   action=${controls[16#${digest:50:2} % ${#controls[@]}]}
+  intro_align=${controls[16#${digest:44:2} % ${#controls[@]}]}
   case "$action" in
     start) start=0; end=auto;;
     center) start=auto; end=auto;;
@@ -306,9 +305,70 @@ site_theme() {
   --paper:$paper; --ink:$ink; --muted:$muted; --accent:$accent; --surface:$surface; --rule:$rule;
   --heading:$heading; --body:$body; --text-size:${text_size}px; --title-max:${title_size}px; --section-max:${section_size}px; --heading-weight:$weight;
   --measure:${measure}rem; --hero:${hero_space}px; --radius:${radius}px; --gap:${gap}px;
-  --nav-justify:$nav; --nav-gap:${nav_gap}px; --action-align:$action; --action-start:$start; --action-end:$end;
+  --nav-gap:${nav_gap}px; --intro-align:$intro_align; --action-align:$action; --action-start:$start; --action-end:$end;
 }
 EOF
+}
+
+site_navigation_style() {
+  cat <<'CSS'
+.site-frame { width:min(var(--measure), calc(100% - 2.25rem)); margin-inline:auto; }
+.site-frame .wrap { width:100%; }
+.site-content { min-width:0; }
+.site-nav,.site-return { padding-block:.9rem; }
+.site-nav { display:flex; align-items:center; flex-wrap:wrap; gap:.35rem var(--nav-gap); }
+.site-nav a,.site-return a { display:inline-block; padding:.3rem 0; overflow-wrap:anywhere; }
+.site-name { font:700 1.15rem/1.35 var(--heading); overflow-wrap:anywhere; }
+.nav-top > .site-nav { border-bottom:1px solid var(--rule); }
+.nav-bottom > .site-nav,.site-return { margin-top:var(--gap); border-top:1px solid var(--rule); }
+.nav-align-start > .site-nav { justify-content:flex-start; text-align:start; }
+.nav-align-center > .site-nav { justify-content:center; text-align:center; }
+.nav-align-end > .site-nav { justify-content:flex-end; text-align:end; }
+.site-return { text-align:var(--action-align); }
+@media (min-width:58rem) {
+  .nav-left,.nav-right { display:grid; align-items:start; gap:clamp(1.25rem, 4vw, 3.25rem); }
+  .nav-left { grid-template-columns:minmax(8rem, 12rem) minmax(0, 1fr); }
+  .nav-right { grid-template-columns:minmax(0, 1fr) minmax(8rem, 12rem); }
+  .nav-left > .site-nav,.nav-right > .site-nav {
+    position:sticky; top:1rem; display:grid; justify-content:stretch; margin-top:var(--gap); padding:.9rem;
+    border:1px solid var(--rule); border-radius:var(--radius); background:var(--surface);
+  }
+  .nav-right > .site-nav { grid-column:2; grid-row:1; }
+  .nav-right > .site-content { grid-column:1; grid-row:1; }
+  .nav-top.nav-keep > .site-nav { position:sticky; top:0; background:var(--paper); z-index:1; }
+  .nav-top.nav-keep .site-content [id] { scroll-margin-top:6rem; }
+}
+@media (max-width:57.999rem) {
+  .nav-left > .site-nav,.nav-right > .site-nav { border-bottom:1px solid var(--rule); }
+  .nav-left > .site-nav > .site-name,.nav-right > .site-nav > .site-name { flex:0 1 100%; }
+}
+CSS
+}
+
+site_navigation() {
+  local digest=$1 name=$2 items=$3 phase=$4
+  local -a regions=(top left right bottom) labels=('返回顶部' '回到页首' '回到开头' '回到首页顶部' '回到最上方') alignments=(start center end)
+  local region=${regions[16#${digest:54:2} % ${#regions[@]}]}
+  local label=${labels[16#${digest:58:2} % ${#labels[@]}]}
+  local alignment=${alignments[16#${digest:46:2} % ${#alignments[@]}]}
+  local top_link="<a href=\"#top\">$label</a>" footer='' nav
+  if [[ $region == top ]] && (( 16#${digest:56:2} % 2 == 0 )); then
+    footer=$top_link
+    top_link=''
+  fi
+  nav="<nav class=\"site-nav\" aria-label=\"站内导航\"><span class=\"site-name\">$name</span>$items$top_link</nav>"
+  if [[ $phase == open ]]; then
+    local sticky=''
+    if [[ $region == top && -n $top_link ]]; then sticky=' nav-keep'; fi
+    printf '<div class="site-frame nav-%s nav-align-%s%s">\n' "$region" "$alignment" "$sticky"
+    if [[ $region != bottom ]]; then printf '%s\n' "$nav"; fi
+    printf '<div class="site-content">\n'
+  else
+    printf '</div>\n'
+    if [[ $region == bottom ]]; then printf '%s\n' "$nav"; fi
+    if [[ -n $footer ]]; then printf '<footer class="site-return">%s</footer>\n' "$footer"; fi
+    printf '</div>\n'
+  fi
 }
 
 render_blog() {
@@ -355,12 +415,18 @@ render_blog() {
     '日常|一周记三样见闻|想写日记但时间不够，可以只挑一种声音、一件借过的物品和一个想再去的地方记下来。|隔几周翻看，会发现几条记录说的是同一件事，再把它们合成一篇短文。'
   )
   local -a selected=()
-  local i position count category title menu_items=''
+  local i position count category title section_label about_label menu_label menu_items='' nav_items
+  local -a section_labels=('文章' '阅读文章' '随笔列表' '查看笔记') about_labels=('关于' '关于这里' '小站介绍' '认识这个小站')
+  local -a menu_labels=('最近文章' '随笔索引' '文章一览' '本页选读')
 
   digest=$(printf '%s' "$1" | sha256sum)
   IFS='|' read -r name intro about <<< "${identities[16#${digest:0:2} % ${#identities[@]}]}"
   theme=$(site_theme "$digest")
   layout=${layouts[16#${digest:6:2} % ${#layouts[@]}]}
+  section_label=${section_labels[16#${digest:60:2} % ${#section_labels[@]}]}
+  about_label=${about_labels[16#${digest:62:2} % ${#about_labels[@]}]}
+  menu_label=${menu_labels[16#${digest:48:2} % ${#menu_labels[@]}]}
+  nav_items="<a href=\"#notes\">$section_label</a><a href=\"#about\">$about_label</a>"
   count=$((3 + 16#${digest:52:2} % 3))
   for ((position=1; position<=count; position++)); do
     i=$((6 + position * 2))
@@ -382,6 +448,7 @@ render_blog() {
 <title>$name</title>
 <style>
 $theme
+$(site_navigation_style)
 * { box-sizing:border-box; }
 body { margin:0; background:var(--paper); color:var(--ink); font:var(--text-size)/1.75 var(--body); }
 a { color:inherit; text-underline-offset:.22em; }
@@ -390,15 +457,14 @@ a:focus-visible { outline:2px solid var(--accent); outline-offset:.25rem; }
 .skip { position:absolute; inset-block-start:.5rem; inset-inline-start:.5rem; padding:.4rem .8rem; transform:translateY(-160%); background:var(--paper); }
 .skip:focus { transform:none; }
 .wrap { width:min(var(--measure), calc(100% - 2.25rem)); margin-inline:auto; }
-.bar { display:flex; justify-content:var(--nav-justify); align-items:center; gap:.7rem var(--nav-gap); flex-wrap:wrap; padding-block:1.15rem; border-bottom:1px solid var(--rule); }
-.bar nav { display:flex; gap:var(--nav-gap); }
-.brand { font:700 1.25rem/1.3 var(--heading); text-decoration:none; }
+.skip { z-index:2; }
 h1,h2 { font-family:var(--heading); font-weight:var(--heading-weight); line-height:1.22; overflow-wrap:anywhere; }
 h1 { font-size:clamp(2.45rem, 8vw, var(--title-max)); letter-spacing:-.04em; margin:0 0 .55rem; }
 h2 { font-size:clamp(1.42rem, 3.8vw, var(--section-max)); margin:.25rem 0 .8rem; }
 p { margin:0 0 .8rem; }
 article p:last-child, .hero p, .about p { margin-bottom:0; }
 .main { padding-block:clamp(1.65rem, 6vw, var(--hero)); }
+.hero { text-align:var(--intro-align); }
 .hero p,.about p { color:var(--muted); }
 .category { color:var(--accent); font-size:.9rem; font-weight:650; }
 .menu { padding:1.15rem 1.3rem; border:1px solid var(--rule); }
@@ -407,7 +473,7 @@ article p:last-child, .hero p, .about p { margin-bottom:0; }
 .menu li { margin-block:.32rem; }
 article { scroll-margin-top:1rem; padding:1.35rem 0; border-top:1px solid var(--rule); }
 .journal .main { max-width:44rem; }
-.journal .hero { text-align:center; padding:1rem 0 2.5rem; }
+.journal .hero { padding:1rem 0 2.5rem; }
 .journal .menu { margin-bottom:1.4rem; border-width:1px 0; }
 .journal .menu ul { display:flex; flex-wrap:wrap; gap:.2rem 1.25rem; list-style:none; padding:0; }
 .archive .main { display:grid; grid-template-columns:minmax(12rem, .65fr) minmax(0, 1.35fr); align-items:start; gap:clamp(1.25rem, 4vw, 3.5rem); }
@@ -421,17 +487,17 @@ article { scroll-margin-top:1rem; padding:1.35rem 0; border-top:1px solid var(--
 .feature .grid { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:var(--gap); margin-top:1.4rem; }
 .about { padding-block:1rem 2rem; }
 .about h2 { font-size:1.35rem; }
-footer { border-top:1px solid var(--rule); padding-block:1rem 1.5rem; text-align:var(--action-align); }
-@media (max-width:40rem) { .archive .main,.feature .grid { grid-template-columns:1fr; } }
+@container (max-width:40rem) { .archive .main,.feature .grid { grid-template-columns:1fr; } }
+.site-content { container-type:inline-size; }
 </style>
 </head>
 <body id="top" class="$layout">
 <a class="skip" href="#main">跳到正文</a>
-<header class="wrap bar"><a class="brand" href="#top">$name</a><nav aria-label="页面导航"><a href="#notes">文章</a><a href="#about">关于</a></nav></header>
+$(site_navigation "$digest" "$name" "$nav_items" open)
 <main class="wrap main" id="main">
 EOF
   local hero="<section class=\"hero\"><h1>$name</h1><p>$intro</p></section>"
-  local menu="<nav class=\"menu\" aria-label=\"文章目录\"><h2>最近文章</h2><ul>$menu_items</ul></nav>"
+  local menu="<nav class=\"menu\" aria-label=\"$menu_label\"><h2>$menu_label</h2><ul>$menu_items</ul></nav>"
   case "$layout" in
     archive)
       printf '<aside>%s%s</aside>\n<section id="notes" aria-label="文章">\n' "$hero" "$menu"
@@ -453,8 +519,8 @@ EOF
   esac
   cat <<EOF
 </main>
-<section class="wrap about" id="about"><h2>关于这里</h2><p>$about</p></section>
-<footer class="wrap"><a href="#top">返回顶部</a></footer>
+<section class="wrap about" id="about"><h2>$about_label</h2><p>$about</p></section>
+$(site_navigation "$digest" "$name" "$nav_items" close)
 </body>
 </html>
 EOF
@@ -495,13 +561,14 @@ site_storage() {
 }
 
 render_other_site() {
-  local digest=$1 type=$2 name intro nav_label theme choice i detail title url count position storage draw extra has_pdf=0
-  local -a names=() cards=() tools=(count temperature length format uppercase pdf archive download timestamp urlcode)
+  local digest=$1 type=$2 name intro nav_label nav_items theme choice i detail title url count position storage draw extra has_pdf=0
+  local caption cta
+  local -a names=() summaries=() cards=() tools=(count temperature length format uppercase pdf archive download timestamp urlcode)
+  local -a link_labels=('打开%s官网' '访问%s官方网站' '前往%s官网' '%s官方主页' '浏览%s官网')
   case "$type" in
     home)
       names=('我的第一个网站' '小站第一天' '一页个人主页' '从一张空白页开始' '搭个小站' '书签里的主页')
-      intro='把学习 Python 的路线写成一份能照着做的练习计划。'
-      nav_label='Python 学习计划'
+      summaries=('Python 学习计划|给自己留一份能按天做的上手练习。' '查看学习路线|从一个小项目开始，把练过的东西串起来。' 'Python 练习|按下面的顺序动手，每一步都能跑出来看看。' '项目练习计划|给刚开始写 Python 的自己排一份短计划。')
       cards=(
         '七天写出一个终端记账本|第 1、2 天练习变量、输入和数字转换。第 3、4 天用条件语句和循环处理菜单。第 5 天把记录放进列表、拆成函数。第 6 天写入 CSV。第 7 天用五笔样例核对收支总额。'
         '两周做一个阅读清单|第一周学习字符串、字典、列表和文件读写，把书名和页码存成 JSON。第二周加上命令行的添加、搜索和完成操作。验收时关掉程序再打开，记录仍能读出来。'
@@ -512,8 +579,7 @@ render_other_site() {
       ;;
     learner)
       names=('小白的第一次尝试' '网页练习册' '第一次写页面' '学一点前端' '动手练习记录' '新手实验簿')
-      intro='把第一次建站时真正用到的步骤和踩过的坑记下来。'
-      nav_label='第一次建站'
+      summaries=('第一次建站|记一下做第一张网页时真正用上的步骤。' '建站手记|第一次发布自己的页面，有些问题是上线才发现的。' '查看经验|把自己试过的办法记下来，下次从这里接着做。' '动手记录|从打开本地文件到发给朋友，我把过程中遇到的小问题写在这里。')
       cards=(
         '第一次发布，先做一张能打开的首页|最初想一次做出导航、图库和留言板，结果一项都没收尾。我后来只留下标题、介绍和两个站内链接。先在本机用浏览器打开，再上传 index.html。能从手机访问之后，才继续添加下一页。'
         '域名配置完成，别急着改服务器|新记录保存后，浏览器还访问到旧地址。我先查解析值是否已更新，再核对网站的域名配置。把解析、站点监听和 HTTPS 分成三步，排查比反复重启服务快。'
@@ -524,13 +590,11 @@ render_other_site() {
       ;;
     tools)
       names=('个人工具箱' '桌面小工具' '口袋计算台' '随手处理' '轻量工具架' '日常换算桌')
-      intro='几个在浏览器里就能用的小工具。'
-      nav_label='工具'
+      summaries=('工具|几个在浏览器里就能用的小工具。' '打开工具箱|平时用到的换算和文本处理，放在一页里。' '试用工具|遇到些零碎的小活，可以直接在这页处理。' '常用工具|在这里整理文字、转换数据，或找到常用软件入口。')
       ;;
     links)
       names=('官网导航工具箱' '常用官网书签' '网页路标' '桌面导航卡' '官网入口集' '常用网站收藏')
-      intro='常用的官方网站，打开就能找到产品、支持和搜索入口。'
-      nav_label='官网目录'
+      summaries=('官网目录|把平时会查的品牌官网放到一起。' '浏览品牌|想找产品资料或售后支持，可以先从品牌官网进入。' '查看网站清单|按站名找入口。每张卡片都通向对应的官方网站。' '官网收藏|从设备到生活用品，这一页收着几个行业的官方入口。' '品牌官网一览|需要找新品或查使用说明时，可以打开下面的官网。')
       cards=("${SITE_OFFICIAL_LINKS[@]}")
       ;;
     check)
@@ -540,6 +604,10 @@ render_other_site() {
       ;;
   esac
   name=${names[16#${digest:0:2} % ${#names[@]}]}
+  if [[ $type != check ]]; then
+    IFS='|' read -r nav_label intro <<< "${summaries[16#${digest:60:2} % ${#summaries[@]}]}"
+    nav_items="<a href=\"#content\">$nav_label</a>"
+  fi
   theme=$(site_theme "$digest")
 
   cat <<EOF
@@ -552,17 +620,16 @@ render_other_site() {
 <title>$name</title>
 <style>
 $theme
+$(site_navigation_style)
 * { box-sizing:border-box; }
 body { margin:0; background:var(--paper); color:var(--ink); font:var(--text-size)/1.62 var(--body); }
 .wrap { width:min(var(--measure), calc(100% - 2.25rem)); margin-inline:auto; }
-header,footer { padding-block:1rem; border-bottom:1px solid var(--rule); }
-header { display:flex; justify-content:var(--nav-justify); gap:var(--nav-gap); align-items:center; flex-wrap:wrap; }
 a { color:inherit; text-underline-offset:.24em; }
 h1,h2 { font-family:var(--heading); font-weight:var(--heading-weight); line-height:1.2; overflow-wrap:anywhere; }
 h1 { font-size:clamp(2.4rem, 7vw, var(--title-max)); margin:0 0 .6rem; }
 h2 { font-size:clamp(1.25rem, 3vw, var(--section-max)); margin:0 0 .65rem; }
 p { margin:0; }
-.intro { padding-block:clamp(2rem, 6vw, var(--hero)); }
+.intro { padding-block:clamp(2rem, 6vw, var(--hero)); text-align:var(--intro-align); }
 .intro p,.card p { color:var(--muted); }
 .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr)); gap:var(--gap); }
 .card { min-width:0; padding:1.2rem; background:var(--surface); border:1px solid var(--rule); border-radius:var(--radius); }
@@ -571,13 +638,14 @@ p { margin:0; }
 .learner .grid { display:grid; grid-template-columns:1fr; padding-left:1rem; border-left:2px solid var(--accent); }
 .tools .intro { padding-block:2.5rem; }
 .links .grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr)); }
+.links .nav-left .grid,.links .nav-right .grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr)); }
 .links .intro { border-bottom:1px solid var(--rule); margin-bottom:var(--gap); }
 .link-actions { text-align:var(--action-align); margin-top:.9rem; }
+.link-actions-first { margin:0 0 .9rem; }
 .link-actions a { display:inline-block; padding:.35rem .8rem; color:var(--paper); background:var(--accent); text-decoration:none; border-radius:var(--radius); }
 .link-actions a:hover { text-decoration:underline; }
 .check .intro { margin:1rem 0; padding:clamp(1rem, 4vw, 2rem); background:var(--surface); }
 .check .grid { margin-top:1rem; }
-footer { border-bottom:none; border-top:1px solid var(--rule); margin-top:2.5rem; text-align:var(--action-align); }
 button,input,textarea { font:inherit; }
 textarea,input { width:100%; color:var(--ink); background:var(--paper); border:1px solid var(--accent); padding:.45rem .55rem; margin:.35rem 0 .65rem; }
 textarea { resize:vertical; }
@@ -624,7 +692,7 @@ HTML
     return
   fi
   cat <<EOF
-<header class="wrap"><a href="#top">$name</a><a href="#content">$nav_label</a></header>
+$(site_navigation "$digest" "$name" "$nav_items" open)
 <main class="wrap">
 <section class="intro"><h1>$name</h1><p>$intro</p></section>
 <section id="content" aria-label="$nav_label">
@@ -647,8 +715,13 @@ EOF
       i=$((position * 4))
       choice=$((16#${draw:i:4} % ${#cards[@]}))
       IFS='|' read -r title url detail <<< "${cards[choice]}"
-      printf '<article class="card"><h2>%s</h2><p>%s</p><p class="link-actions"><a href="%s" rel="noreferrer">打开%s官网</a></p></article>\n' \
-        "$title" "$detail" "$url" "$title"
+      printf -v caption "${link_labels[16#${digest:62:2} % ${#link_labels[@]}]}" "$title"
+      printf -v cta '<a href="%s" rel="noreferrer">%s</a>' "$url" "$caption"
+      if (( 16#${digest:52:2} % 2 == 0 )); then
+        printf '<article class="card"><p class="link-actions link-actions-first">%s</p><h2>%s</h2><p>%s</p></article>\n' "$cta" "$title" "$detail"
+      else
+        printf '<article class="card"><h2>%s</h2><p>%s</p><p class="link-actions">%s</p></article>\n' "$title" "$detail" "$cta"
+      fi
       cards=("${cards[@]:0:choice}" "${cards[@]:choice+1}")
     done
   else
@@ -656,7 +729,8 @@ EOF
     IFS='|' read -r title detail <<< "${cards[choice]}"
     printf '<article class="card"><h2>%s</h2><p>%s</p></article>\n' "$title" "$detail"
   fi
-  printf '</div></section></main>\n<footer class="wrap"><a href="#top">返回顶部</a></footer>\n'
+  printf '</div></section></main>\n'
+  site_navigation "$digest" "$name" "$nav_items" close
   case "$type" in
     tools)
       printf '<script>\n'
