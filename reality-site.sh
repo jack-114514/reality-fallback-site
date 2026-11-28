@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 umask 022
 
-readonly VERSION=1.3.2
+readonly VERSION=1.4
 readonly CADDY_VERSION=2.11.9
 readonly CONFIG_DIR=/etc/reality-site
 readonly WEB_ROOT=/var/www/reality-site
@@ -396,7 +396,7 @@ render_blog() {
     '慢整理|读书、做饭，顺手把零散的想法写下来。|笔记的主题随日子变化，留下来的大多是以后还想再做一次的事。'
     '小页集|给琐碎日常留一页纸。|写作从一个具体的东西开始，有时是一张旧票根，有时是没有喝完的茶。'
   )
-  local -a layouts=(journal archive feature)
+  local -a layouts=(journal archive feature folio)
   local -a articles=(
     '阅读|用一张纸接住一句话|读到喜欢的段落，把书合上，再试着写出最想留下的那句。写出来的措辞常常和原文不同，却能看出自己在意哪一部分。|隔一周翻回那张纸，先看当时的问题，再读原来那页。重读就有了一个入口。'
     '散步|换过街的一边走走|熟悉的街换一边走，招牌就在不一样的高度。原以为一直关着的旧店，侧边那扇窄窗其实每天都开。|回家路上挑一件能描述清楚的小事记下，慢慢就会有一本属于这几条街的笔记。'
@@ -501,6 +501,13 @@ article { scroll-margin-top:1rem; padding:1.35rem 0; border-top:1px solid var(--
 .feature .lead h2 { font-size:clamp(1.75rem, 5vw, calc(var(--section-max) + 16px)); }
 .feature .lead article { padding:0; border:0; max-width:45rem; }
 .feature .grid { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:var(--gap); margin-top:1.4rem; }
+.folio .hero { background:var(--accent); color:var(--paper); padding:clamp(1.35rem, 5vw, 3.75rem); }
+.folio .hero p { color:inherit; }
+.folio .hero h1 { font-size:clamp(2rem, 7vw, var(--title-max)); }
+.folio .menu { margin:0 0 1.5rem; border-width:0 0 1px; }
+.folio .menu ul { list-style:none; padding:0; display:flex; flex-wrap:wrap; gap:.25rem 1.4rem; }
+.folio-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,21rem),1fr)); gap:var(--gap); }
+.folio-grid article { padding:1rem; background:var(--surface); border-top:3px solid var(--accent); }
 .about { padding-block:1rem 2rem; }
 .about h2 { font-size:1.35rem; }
 @container (max-width:40rem) { .archive .main,.feature .grid { grid-template-columns:1fr; } }
@@ -532,6 +539,11 @@ EOF
       for i in "${!selected[@]}"; do blog_article "$((i + 1))" "${selected[i]}"; done
       printf '</section>\n'
       ;;
+    folio)
+      printf '%s\n%s\n<section class="folio-grid" id="notes" aria-label="文章">\n' "$hero" "$menu"
+      for i in "${!selected[@]}"; do blog_article "$((i + 1))" "${selected[i]}"; done
+      printf '</section>\n'
+      ;;
   esac
   cat <<EOF
 </main>
@@ -543,9 +555,13 @@ EOF
 }
 
 tool_card() {
-  local tool=$1 title label field submit
+  local tool=$1 layout=$2 title label field submit
   case "$tool" in
     archive)
+      if [[ $layout == drawers ]]; then
+        printf '%s\n' '<details><summary>7-Zip 安装包</summary><article class="card"><p>在官方页面选择适合你的操作系统和处理器架构的安装包。</p><p class="link-actions"><a class="action" href="https://www.7-zip.org/download.html" rel="noreferrer">获取官方安装包</a></p></article></details>'
+        return
+      fi
       printf '%s\n' '<article class="card"><h2>7-Zip 安装包</h2><p>在官方页面选择适合你的操作系统和处理器架构的安装包。</p><p class="link-actions"><a class="action" href="https://www.7-zip.org/download.html" rel="noreferrer">获取官方安装包</a></p></article>'
       return
       ;;
@@ -559,8 +575,102 @@ tool_card() {
     timestamp) title='时间戳转换'; label='输入 Unix 时间戳（秒）'; submit='转换时间'; field='<input name="value" type="number" step="1" required>';;
     urlcode) title='URL 编码'; label='输入要编码的文字'; submit='编码'; field='<textarea name="value" rows="3" required></textarea>';;
   esac
-  printf '<form class="card" data-tool="%s"><h2>%s</h2><label>%s%s</label><button class="action" type="submit">%s</button><output aria-live="polite"></output></form>\n' \
-    "$tool" "$title" "$label" "$field" "$submit"
+  if [[ $layout == drawers ]]; then
+    printf '<details><summary>%s</summary>\n' "$title"
+  fi
+  printf '<form class="card" data-tool="%s">\n' "$tool"
+  if [[ $layout != drawers ]]; then printf '<h2>%s</h2>\n' "$title"; fi
+  printf '<label>%s%s</label><button class="action" type="submit">%s</button><output aria-live="polite"></output></form>\n' \
+    "$label" "$field" "$submit"
+  if [[ $layout == drawers ]]; then printf '</details>\n'; fi
+}
+
+directory_tile() {
+  local digest=$1 name=$2 address=$3 category=$4 tile_class=$5 caption
+  local -a labels=('打开%s官网' '访问%s官方网站' '前往%s官网' '%s官方主页' '浏览%s官网')
+  printf -v caption "${labels[16#${digest:62:2} % ${#labels[@]}]}" "$name"
+  printf '<article class="%s">' "$tile_class"
+  if (( 16#${digest:52:2} % 2 == 0 )); then
+    printf '<p class="link-actions link-actions-first"><a class="action" href="%s" rel="noreferrer">%s</a></p><h2>%s</h2><p>%s</p>' "$address" "$caption" "$name" "$category"
+  else
+    printf '<h2>%s</h2><p>%s</p><p class="link-actions"><a class="action" href="%s" rel="noreferrer">%s</a></p>' "$name" "$category" "$address" "$caption"
+  fi
+  printf '</article>\n'
+}
+
+render_directory() {
+  local digest=$1 layout=$2 draw extra i position choice title url category record entry
+  local -a remaining=("${SITE_OFFICIAL_LINKS[@]}") selected=() categories=()
+  local -A grouped=()
+  draw=$(printf '%s:links:0' "$digest" | sha256sum)
+  extra=$(printf '%s:links:1' "$digest" | sha256sum)
+  draw="${draw%% *}${extra%% *}"
+  for ((position=0; position<30; position++)); do
+    i=$((position * 4))
+    choice=$((16#${draw:i:4} % ${#remaining[@]}))
+    selected+=("${remaining[choice]}")
+    remaining=("${remaining[@]:0:choice}" "${remaining[@]:choice+1}")
+  done
+
+  case "$layout" in
+    atlas)
+      for record in "${selected[@]}"; do
+        IFS='|' read -r title url category <<< "$record"
+        if [[ ! ${grouped[$category]+present} ]]; then categories+=("$category"); fi
+        printf -v entry '<li><a href="%s" rel="noreferrer">%s</a></li>' "$url" "$title"
+        grouped[$category]+=$entry
+      done
+      printf '<div class="atlas-groups">\n'
+      for category in "${categories[@]}"; do
+        printf '<section><h2>%s</h2><ul>%s</ul></section>\n' "$category" "${grouped[$category]}"
+      done
+      printf '</div>\n'
+      ;;
+    ledger)
+      printf '<ul class="directory-list">\n'
+      for record in "${selected[@]}"; do
+        IFS='|' read -r title url category <<< "$record"
+        printf '<li><a href="%s" rel="noreferrer">%s</a><span>%s</span></li>\n' "$url" "$title" "$category"
+      done
+      printf '</ul>\n'
+      ;;
+    *)
+      if [[ $layout == showcase ]]; then
+        IFS='|' read -r title url category <<< "${selected[0]}"
+        directory_tile "$digest" "$title" "$url" "$category" 'directory-lead'
+        selected=("${selected[@]:1}")
+      fi
+      printf '<div class="grid">\n'
+      for record in "${selected[@]}"; do
+        IFS='|' read -r title url category <<< "$record"
+        directory_tile "$digest" "$title" "$url" "$category" card
+      done
+      printf '</div>\n'
+      ;;
+  esac
+}
+
+render_note() {
+  local layout=$1 title=$2 detail=$3
+  printf '<article class="note"><h2>%s</h2>\n' "$title"
+  case "$layout" in
+    steps)
+      printf '<ol class="note-steps">\n'
+      while [[ $detail == *。* ]]; do
+        printf '<li>%s。</li>\n' "${detail%%。*}"
+        detail=${detail#*。}
+      done
+      if [[ -n $detail ]]; then printf '<li>%s</li>\n' "$detail"; fi
+      printf '</ol>\n'
+      ;;
+    paper)
+      printf '<p>%s</p>\n' "$detail"
+      ;;
+    split)
+      printf '<div class="note-prose"><p>%s</p></div>\n' "$detail"
+      ;;
+  esac
+  printf '</article>\n'
 }
 
 site_storage() {
@@ -577,12 +687,11 @@ site_storage() {
 }
 
 render_other_site() {
-  local digest=$1 type=$2 name intro nav_label nav_items theme choice i detail title url count position storage draw extra has_pdf=0
-  local caption cta
-  local -a names=() summaries=() cards=() tools=(count temperature length format uppercase pdf archive download timestamp urlcode)
-  local -a link_labels=('打开%s官网' '访问%s官方网站' '前往%s官网' '%s官方主页' '浏览%s官网')
+  local digest=$1 type=$2 name intro nav_label nav_items theme layout choice i detail title count position storage has_pdf=0
+  local -a names=() summaries=() cards=() layouts=() tools=(count temperature length format uppercase pdf archive download timestamp urlcode)
   case "$type" in
     home)
+      layouts=(steps split paper)
       names=('我的第一个网站' '小站第一天' '一页个人主页' '从一张空白页开始' '搭个小站' '书签里的主页')
       summaries=('Python 学习计划|给自己留一份能按天做的上手练习。' '查看学习路线|从一个小项目开始，把练过的东西串起来。' 'Python 练习|按下面的顺序动手，每一步都能跑出来看看。' '项目练习计划|给刚开始写 Python 的自己排一份短计划。')
       cards=(
@@ -594,6 +703,7 @@ render_other_site() {
       )
       ;;
     learner)
+      layouts=(paper split steps)
       names=('小白的第一次尝试' '网页练习册' '第一次写页面' '学一点前端' '动手练习记录' '新手实验簿')
       summaries=('第一次建站|记一下做第一张网页时真正用上的步骤。' '建站手记|第一次发布自己的页面，有些问题是上线才发现的。' '查看经验|把自己试过的办法记下来，下次从这里接着做。' '动手记录|从打开本地文件到发给朋友，我把过程中遇到的小问题写在这里。')
       cards=(
@@ -605,21 +715,24 @@ render_other_site() {
       )
       ;;
     tools)
+      layouts=(gallery drawers bench)
       names=('个人工具箱' '桌面小工具' '口袋计算台' '随手处理' '轻量工具架' '日常换算桌')
       summaries=('工具|几个在浏览器里就能用的小工具。' '打开工具箱|平时用到的换算和文本处理，放在一页里。' '试用工具|遇到些零碎的小活，可以直接在这页处理。' '常用工具|在这里整理文字、转换数据，或找到常用软件入口。')
       ;;
     links)
+      layouts=(tiles ledger atlas showcase)
       names=('官网导航工具箱' '常用官网书签' '网页路标' '桌面导航卡' '官网入口集' '常用网站收藏')
-      summaries=('官网目录|把平时会查的品牌官网放到一起。' '浏览品牌|想找产品资料或售后支持，可以先从品牌官网进入。' '查看网站清单|按站名找入口。每张卡片都通向对应的官方网站。' '官网收藏|从设备到生活用品，这一页收着几个行业的官方入口。' '品牌官网一览|需要找新品或查使用说明时，可以打开下面的官网。')
-      cards=("${SITE_OFFICIAL_LINKS[@]}")
+      summaries=('官网目录|把平时会查的品牌官网放到一起。' '浏览品牌|想找产品资料或售后支持，可以先从品牌官网进入。' '查看网站清单|按站名找入口。每个链接都通向对应的官方网站。' '官网收藏|从设备到生活用品，这一页收着几个行业的官方入口。' '品牌官网一览|需要找新品或查使用说明时，可以打开下面的官网。')
       ;;
     check)
+      layouts=(readouts report strip)
       names=('测试服务器' '站点测试台' '页面部署实验' '单页站自检' '网页实验室' '浏览器小测试')
       intro='站点所在文件系统的总容量与浏览器请求本页的延时。'
       nav_label='服务器测试'
       ;;
   esac
   name=${names[16#${digest:0:2} % ${#names[@]}]}
+  layout=${layouts[16#${digest:12:2} % ${#layouts[@]}]}
   if [[ $type != check ]]; then
     IFS='|' read -r nav_label intro <<< "${summaries[16#${digest:60:2} % ${#summaries[@]}]}"
     nav_items="<a class=\"action\" href=\"#content\">$nav_label</a>"
@@ -650,17 +763,51 @@ p { margin:0; }
 .intro p,.card p { color:var(--muted); }
 .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr)); gap:var(--gap); }
 .card { min-width:0; padding:1.2rem; background:var(--surface); border:1px solid var(--rule); border-radius:var(--radius); }
-.home .intro { margin-top:1rem; padding-inline:clamp(1rem, 4vw, 2.5rem); border-left:.35rem solid var(--accent); }
-.learner .wrap { max-width:45rem; }
-.learner .grid { display:grid; grid-template-columns:1fr; padding-left:1rem; border-left:2px solid var(--accent); }
+.note { min-width:0; }
+[data-layout="paper"] .wrap { max-width:45rem; }
+[data-layout="paper"] .note { border-block:1px solid var(--rule); padding-block:1.65rem; line-height:1.9; }
+[data-layout="paper"] .note p { text-indent:2em; }
+[data-layout="split"] .composition { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr)); gap:var(--gap); margin-block:var(--gap); }
+[data-layout="split"] .intro { padding:clamp(1rem, 4vw, 2.5rem); background:var(--surface); border-inline-start:.35rem solid var(--accent); }
+[data-layout="split"] .intro h1 { font-size:clamp(2rem, 5vw, calc(var(--title-max) - 1rem)); }
+[data-layout="split"] .note { padding:clamp(1rem, 4vw, 2.5rem) clamp(.25rem, 2vw, 1rem); }
+[data-layout="steps"] .intro { border-block-end:3px solid var(--accent); }
+[data-layout="steps"] .note { padding-block:1.5rem; }
+.note-steps { margin:1rem 0 0; padding-inline-start:2rem; }
+.note-steps li { padding:.6rem .5rem; border-bottom:1px solid var(--rule); }
 .tools .intro { padding-block:2.5rem; }
+.drawers details { border-block-start:1px solid var(--rule); }
+.drawers details:last-child { border-block-end:1px solid var(--rule); }
+.drawers summary { cursor:pointer; padding:.9rem .65rem; font:var(--heading-weight) 1.25rem/1.4 var(--heading); }
+.drawers summary::marker { color:var(--accent); }
+.drawers .card { background:transparent; border:0; padding:.15rem .8rem 1.1rem; }
+.bench { grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr)); }
+.bench > :first-child { grid-column:1 / -1; border-inline-start:4px solid var(--accent); }
+.bench > :first-child label { display:block; max-width:42rem; }
+.bench > :not(:first-child) { background:transparent; border-width:1px 0 0; border-radius:0; }
 .links .grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr)); }
 .links .nav-left .grid,.links .nav-right .grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr)); }
 .links .intro { border-bottom:1px solid var(--rule); margin-bottom:var(--gap); }
+.directory-list { list-style:none; max-width:52rem; padding:0; margin:0; border-bottom:1px solid var(--rule); }
+.directory-list li { display:flex; flex-wrap:wrap; justify-content:space-between; gap:.25rem 1rem; align-items:baseline; padding:.6rem .4rem; border-top:1px solid var(--rule); }
+.directory-list a,.atlas-groups a { color:var(--accent); overflow-wrap:anywhere; }
+.directory-list span { color:var(--muted); font-size:.9em; }
+[data-layout="ledger"] .intro h1 { font-size:clamp(2rem, 5vw, 3.25rem); }
+.atlas-groups { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr)); align-items:start; gap:var(--gap); }
+.atlas-groups section { border-top:3px solid var(--accent); padding-block:.8rem; }
+.atlas-groups h2 { font-size:1.2rem; }
+.atlas-groups ul { margin:0; padding-inline-start:1.25rem; }
+.atlas-groups a { display:inline-block; padding-block:.18rem; }
+[data-layout="atlas"] .intro { background:var(--surface); padding-inline:clamp(1rem, 4vw, 2rem); }
+.directory-lead { background:var(--accent); color:var(--paper); padding:clamp(1.25rem, 5vw, 3rem); margin-block-end:var(--gap); border-inline-start:.5rem solid var(--ink); }
+.directory-lead h2 { font-size:clamp(1.7rem, 5vw, 3.2rem); }
+.directory-lead .action { --accent:var(--lead-text); --paper:var(--lead-fill); --ink:var(--lead-text); }
+.directory-lead { --lead-fill:var(--accent); --lead-text:var(--paper); }
+.directory-lead a:focus-visible { outline-color:var(--paper); }
 .link-actions { text-align:var(--action-align); margin-top:.9rem; }
 .link-actions-first { margin:0 0 .9rem; }
 .check .intro { margin:1rem 0; padding:clamp(1rem, 4vw, 2rem); background:var(--surface); }
-.check .grid { margin-top:1rem; }
+.check .metrics { margin-block:1rem; }
 button,input,textarea { font:inherit; }
 textarea,input { width:100%; color:var(--ink); background:var(--paper); border:1px solid var(--accent); padding:.45rem .55rem; margin:.35rem 0 .65rem; }
 textarea { resize:vertical; }
@@ -670,17 +817,24 @@ output { display:block; margin-top:.55rem; white-space:pre-wrap; overflow-wrap:a
 .metrics { margin:0; }
 .metrics dd { margin:0; font:var(--heading-weight) clamp(1.75rem,5vw,2.8rem)/1.25 var(--heading); }
 .metrics dt { color:var(--muted); margin-bottom:.6rem; }
-a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+[data-layout="report"] .metrics { border-block:1px solid var(--rule); }
+[data-layout="report"] .metrics > div { display:flex; align-items:baseline; flex-wrap:wrap; justify-content:space-between; gap:.5rem 1.2rem; padding:1rem .4rem; }
+[data-layout="report"] .metrics > div + div { border-top:1px solid var(--rule); }
+[data-layout="strip"] .metrics { display:flex; flex-wrap:wrap; background:var(--surface); border-inline-start:4px solid var(--accent); padding:.9rem 1.15rem; gap:1rem 2rem; }
+[data-layout="strip"] .metrics dd { font-size:clamp(1.35rem, 4vw, 2.2rem); }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 </style>
 </head>
-<body id="top" class="$type" data-buttons="${SITE_BUTTONS[16#${digest:2:4} % ${#SITE_BUTTONS[@]}]}">
+<body id="top" class="$type" data-layout="$layout" data-buttons="${SITE_BUTTONS[16#${digest:2:4} % ${#SITE_BUTTONS[@]}]}">
 EOF
   if [[ $type == check ]]; then
     storage=$(site_storage)
+    local metrics_class=metrics reading_class=''
+    if [[ $layout == readouts ]]; then metrics_class='metrics grid'; reading_class=' class="card"'; fi
     cat <<EOF
 <main class="wrap">
 <section class="intro"><h1>$name</h1></section>
-<dl class="grid metrics"><div class="card"><dt>站点磁盘总容量</dt><dd>$storage</dd></div><div class="card"><dt>本页请求延时</dt><dd id="latency" aria-live="polite">测量中…</dd></div></dl>
+<dl class="$metrics_class"><div$reading_class><dt>站点磁盘总容量</dt><dd>$storage</dd></div><div$reading_class><dt>本页请求延时</dt><dd id="latency" aria-live="polite">测量中…</dd></div></dl>
 </main>
 EOF
     cat <<'HTML'
@@ -708,43 +862,33 @@ HTML
   fi
   cat <<EOF
 $(site_navigation "$digest" "$name" "$nav_items" open)
-<main class="wrap">
+<main class="wrap composition">
 <section class="intro"><h1>$name</h1><p>$intro</p></section>
 <section id="content" aria-label="$nav_label">
 EOF
-  printf '<div class="grid">\n'
   if [[ $type == tools ]]; then
+    case "$layout" in
+      drawers) printf '<div class="drawers">\n';;
+      bench) printf '<div class="grid bench">\n';;
+      gallery) printf '<div class="grid">\n';;
+    esac
     count=$((4 + 16#${digest:52:2} % 3))
     for ((position=1; position<=count; position++)); do
       i=$((6 + position * 2))
       choice=$((16#${digest:i:2} % ${#tools[@]}))
       if [[ ${tools[choice]} == pdf ]]; then has_pdf=1; fi
-      tool_card "${tools[choice]}"
+      tool_card "${tools[choice]}" "$layout"
       tools=("${tools[@]:0:choice}" "${tools[@]:choice+1}")
     done
+    printf '</div>\n'
   elif [[ $type == links ]]; then
-    draw=$(printf '%s:links:0' "$digest" | sha256sum)
-    extra=$(printf '%s:links:1' "$digest" | sha256sum)
-    draw="${draw%% *}${extra%% *}"
-    for ((position=0; position<30; position++)); do
-      i=$((position * 4))
-      choice=$((16#${draw:i:4} % ${#cards[@]}))
-      IFS='|' read -r title url detail <<< "${cards[choice]}"
-      printf -v caption "${link_labels[16#${digest:62:2} % ${#link_labels[@]}]}" "$title"
-      printf -v cta '<a class="action" href="%s" rel="noreferrer">%s</a>' "$url" "$caption"
-      if (( 16#${digest:52:2} % 2 == 0 )); then
-        printf '<article class="card"><p class="link-actions link-actions-first">%s</p><h2>%s</h2><p>%s</p></article>\n' "$cta" "$title" "$detail"
-      else
-        printf '<article class="card"><h2>%s</h2><p>%s</p><p class="link-actions">%s</p></article>\n' "$title" "$detail" "$cta"
-      fi
-      cards=("${cards[@]:0:choice}" "${cards[@]:choice+1}")
-    done
+    render_directory "$digest" "$layout"
   else
     choice=$((16#${digest:8:2} % ${#cards[@]}))
     IFS='|' read -r title detail <<< "${cards[choice]}"
-    printf '<article class="card"><h2>%s</h2><p>%s</p></article>\n' "$title" "$detail"
+    render_note "$layout" "$title" "$detail"
   fi
-  printf '</div></section></main>\n'
+  printf '</section></main>\n'
   site_navigation "$digest" "$name" "$nav_items" close
   case "$type" in
     tools)
